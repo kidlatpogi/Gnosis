@@ -138,7 +138,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     }
 
     // Initialize multiple choice options
-    if (studyMode === 'multiple-choice' && card && allCards.length > 1) {
+    if (studyMode === 'multiple-choice' && card && allCards.length >= 1) {
       const options = generateSimilarOptions();
       setMcOptions(options);
     }
@@ -201,7 +201,24 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     
     if (unrevealed.length > 0) {
       const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
-      setRevealedLetters([...revealedLetters, randomIdx]);
+      const newRevealedLetters = [...revealedLetters, randomIdx];
+      setRevealedLetters(newRevealedLetters);
+      
+      // Check if all letters are revealed
+      if (newRevealedLetters.length >= letterIndices.length) {
+        // Auto-fail when all letters revealed
+        setFeedback({
+          correct: false,
+          message: `❌ All letters revealed! The answer was: ${card.back}`
+        });
+        
+        if (!autoRated) {
+          setTimeout(() => {
+            setAutoRated(true);
+            onRate(1, true); // Quality 1 (Again) with hint used
+          }, 2000);
+        }
+      }
     }
   };
 
@@ -431,7 +448,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
                       <strong>{String.fromCharCode(65 + mcOptions.indexOf(option))}.</strong> {option}
                     </Button>
                   ))}
-                  {card.hint && !hintUsed && availableOptions.length > 2 && (
+                  {!hintUsed && availableOptions.length > 2 && (
                     <Button 
                       variant="outline-dark" 
                       size="sm"
