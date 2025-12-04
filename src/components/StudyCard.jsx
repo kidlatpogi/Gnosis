@@ -332,7 +332,6 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
           variant={studyMode === 'multiple-choice' ? 'dark' : 'outline-dark'}
           onClick={() => handleModeChange('multiple-choice')}
           className="py-2 fw-bold"
-          disabled={allCards.length < 2}
         >
           🎯 Multiple Choice
         </Button>
@@ -466,20 +465,18 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
             <div className="mt-4">
               {!feedback ? (
                 <Form onSubmit={handleSubmitTyped}>
-                  {/* Blank template hint */}
-                  {revealedLetters.length > 0 && (
-                    <div className="text-center mb-3 p-3" style={{ 
-                      background: '#f8f9fa', 
-                      border: '2px solid #000', 
-                      borderRadius: '0.5rem',
-                      fontFamily: 'monospace',
-                      fontSize: '1.5rem',
-                      letterSpacing: '3px',
-                      fontWeight: 'bold'
-                    }}>
-                      {blankTemplate}
-                    </div>
-                  )}
+                  {/* Blank template hint - always show */}
+                  <div className="text-center mb-3 p-3" style={{ 
+                    background: '#f8f9fa', 
+                    border: '2px solid #000', 
+                    borderRadius: '0.5rem',
+                    fontFamily: 'monospace',
+                    fontSize: '1.5rem',
+                    letterSpacing: '3px',
+                    fontWeight: 'bold'
+                  }}>
+                    {blankTemplate || card.back.split('').map(c => c === ' ' ? ' ' : '_').join(' ')}
+                  </div>
                   
                   <Form.Group>
                     <Form.Control
@@ -506,7 +503,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
                     >
                       Submit Answer
                     </Button>
-                    {card.hint && revealedLetters.length < card.back.replace(/\s/g, '').length && (
+                    {revealedLetters.length < card.back.replace(/\s/g, '').length && (
                       <Button 
                         variant="outline-dark" 
                         size="lg"
