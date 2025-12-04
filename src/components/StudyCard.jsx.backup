@@ -1,0 +1,173 @@
+import { useState } from 'react';
+import { Card, Button, Badge } from 'react-bootstrap';
+import { Eye, EyeOff, RotateCcw } from 'lucide-react';
+
+/**
+ * StudyCard Component - Flashcard with flip animation
+ * 
+ * @param {Object} card - Card object with { id, front, back }
+ * @param {Function} onRate - Callback when user rates their answer (quality: 0-5, hintUsed: boolean)
+ * @param {number} cardsRemaining - Number of cards left in session
+ */
+const StudyCard = ({ card, onRate, cardsRemaining }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [hintUsed, setHintUsed] = useState(false);
+
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+  };
+
+  const handleHint = () => {
+    setHintUsed(true);
+    setIsFlipped(true);
+  };
+
+  const handleRate = (quality) => {
+    onRate(quality, hintUsed);
+    // Reset card state for next card
+    setIsFlipped(false);
+    setHintUsed(false);
+  };
+
+  if (!card) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+        <Card className="text-center p-5 shadow">
+          <Card.Body>
+            <h3 className="mb-4">🎉 Session Complete!</h3>
+            <p className="text-muted">You've reviewed all cards for today.</p>
+          </Card.Body>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="d-flex flex-column align-items-center gap-3" style={{ minHeight: '500px' }}>
+      {/* Card Counter */}
+      <div className="mb-2">
+        <Badge bg="primary" className="fs-6">
+          {cardsRemaining} card{cardsRemaining !== 1 ? 's' : ''} remaining
+        </Badge>
+      </div>
+
+      {/* Main Card */}
+      <Card 
+        className="shadow-lg" 
+        style={{ 
+          width: '100%', 
+          maxWidth: '600px', 
+          minHeight: '300px',
+          cursor: 'pointer',
+          transition: 'transform 0.3s ease'
+        }}
+        onClick={handleFlip}
+      >
+        <Card.Body className="d-flex flex-column justify-content-center align-items-center p-5">
+          <div className="text-center">
+            <small className="text-muted text-uppercase d-block mb-3">
+              {isFlipped ? 'Answer' : 'Question'}
+            </small>
+            <h3 className="mb-0">
+              {isFlipped ? card.back : card.front}
+            </h3>
+          </div>
+          
+          {!isFlipped && (
+            <div className="mt-4 text-muted">
+              <small>Click card to reveal answer</small>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="d-flex gap-2 flex-wrap justify-content-center mt-3">
+        {!isFlipped ? (
+          <>
+            <Button 
+              variant="outline-secondary" 
+              size="lg"
+              onClick={handleFlip}
+              className="d-flex align-items-center gap-2"
+            >
+              <Eye size={20} />
+              Show Answer
+            </Button>
+            <Button 
+              variant="warning" 
+              size="lg"
+              onClick={handleHint}
+              className="d-flex align-items-center gap-2"
+              disabled={hintUsed}
+            >
+              <EyeOff size={20} />
+              {hintUsed ? 'Hint Used' : 'Use Hint'}
+            </Button>
+          </>
+        ) : (
+          <>
+            {/* Rating Buttons */}
+            <div className="d-flex flex-column gap-2 w-100" style={{ maxWidth: '600px' }}>
+              <p className="text-center mb-2 fw-bold">How well did you know this?</p>
+              
+              <div className="d-flex gap-2">
+                <Button 
+                  variant="danger" 
+                  className="flex-fill"
+                  onClick={() => handleRate(0)}
+                >
+                  <div className="d-flex flex-column">
+                    <span className="fw-bold">Again</span>
+                    <small>Total blackout</small>
+                  </div>
+                </Button>
+                
+                <Button 
+                  variant="warning" 
+                  className="flex-fill"
+                  onClick={() => handleRate(3)}
+                >
+                  <div className="d-flex flex-column">
+                    <span className="fw-bold">Hard</span>
+                    <small>With difficulty</small>
+                  </div>
+                </Button>
+                
+                <Button 
+                  variant="info" 
+                  className="flex-fill"
+                  onClick={() => handleRate(4)}
+                >
+                  <div className="d-flex flex-column">
+                    <span className="fw-bold">Good</span>
+                    <small>Some hesitation</small>
+                  </div>
+                </Button>
+                
+                <Button 
+                  variant="success" 
+                  className="flex-fill"
+                  onClick={() => handleRate(5)}
+                >
+                  <div className="d-flex flex-column">
+                    <span className="fw-bold">Easy</span>
+                    <small>Perfect recall</small>
+                  </div>
+                </Button>
+              </div>
+
+              {hintUsed && (
+                <small className="text-warning text-center mt-2">
+                  ⚠️ Hint was used - Quality capped at "Hard"
+                </small>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default StudyCard;

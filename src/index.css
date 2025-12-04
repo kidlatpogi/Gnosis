@@ -1,0 +1,136 @@
+/* Gnosis Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary-color: #000000;
+  --primary-hover: #333333;
+  --secondary-color: #666666;
+  --success-color: #000000;
+  --warning-color: #000000;
+  --danger-color: #000000;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --border-color: #dee2e6;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Custom Bootstrap overrides */
+.btn {
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+  background: #000000;
+  border: 2px solid #000000;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #333333;
+  border-color: #333333;
+}
+
+.card {
+  border: 2px solid #000000;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  border-radius: 0.5rem !important;
+  background: #ffffff;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg) !important;
+}
+
+.rounded-4 {
+  border-radius: 1rem !important;
+}
+
+.hover-shadow:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-4px);
+}
+
+/* Clean white cards */
+.glass-card {
+  background: #ffffff;
+  border: 2px solid #000000;
+}
+
+/* Navbar sticky effect */
+.navbar-sticky {
+  position: sticky !important;
+  top: 0;
+  z-index: 1030;
+  background: #000000 !important;
+  box-shadow: var(--shadow-md);
+}
+
+/* Progress bar animations */
+.progress {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.progress-bar {
+  transition: width 0.6s ease;
+}
+
+/* Badge styling */
+.badge {
+  font-weight: 500;
+  padding: 0.35em 0.75em;
+  border-radius: 0.5rem;
+}
+
+/* Form controls */
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+/* Alert styling */
+.alert {
+  border-radius: 0.75rem;
+  border: none;
+}
+
+/* Button group */
+.btn-group .btn {
+  font-weight: 600;
+}

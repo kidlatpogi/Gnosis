@@ -1,0 +1,112 @@
+import { createContext, useContext, useEffect, useState } from 'react';
+import { 
+  signInWithPopup, 
+  signOut as firebaseSignOut, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../lib/firebase';
+
+// Create Auth Context
+const AuthContext = createContext({});
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// Auth Provider Component
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          // User is signed in
+          setUser(firebaseUser);
+          
+          // Create or update user profile in Firestore
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (!userSnap.exists()) {
+            // Create new user profile
+            await setDoc(userRef, {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              createdAt: new Date().toISOString(),
+              lastLogin: new Date().toISOString()
+            });
+          } else {
+            // Update last login
+            await setDoc(userRef, {
+              lastLogin: new Date().toISOString()
+            }, { merge: true });
+          }
+        } else {
+          // User is signed out
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Error in auth state change:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, []);
+
+  // Sign in with Google
+  const signInWithGoogle = async () => {
+    try {
+      setError(null);
+      const result = await signInWithPopup(auth, googleProvider);
+      return result.user;
+    } catch (err) {
+      console.error('Error signing in with Google:', err);
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  // Sign out
+  const signOut = async () => {
+    try {
+      setError(null);
+      await firebaseSignOut(auth);
+    } catch (err) {
+      console.error('Error signing out:', err);
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    signInWithGoogle,
+    signOut
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export default AuthContext;
