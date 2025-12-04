@@ -110,17 +110,57 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
       }
     }
     
-    // If still not enough options (e.g., only 1 card in deck), generate dummy options
-    const dummyOptions = [
-      'Option A',
-      'Option B', 
-      'Option C'
-    ];
-    
-    while (wrongOptions.length < 3) {
-      const dummy = dummyOptions[wrongOptions.length];
-      if (dummy !== card.back) {
-        wrongOptions.push(dummy);
+    // If still not enough options (e.g., only 1 card in deck), generate contextual wrong answers
+    if (wrongOptions.length < 3) {
+      const generateWrongAnswer = () => {
+        const words = card.back.split(' ');
+        
+        // Strategy 1: Modify the correct answer slightly
+        if (words.length === 1) {
+          // Single word - add prefix/suffix or change slightly
+          const variations = [
+            `Not ${card.back}`,
+            `${card.back} (incorrect)`,
+            `Fake ${card.back}`,
+            `Wrong ${card.back}`,
+            `${card.back}s`,
+            `${card.back.slice(0, -1)}`,
+          ];
+          return variations[Math.floor(Math.random() * variations.length)];
+        } else {
+          // Multiple words - shuffle or swap words
+          const shuffled = [...words].sort(() => Math.random() - 0.5).join(' ');
+          if (shuffled !== card.back) return shuffled;
+          
+          // Swap first two words
+          if (words.length >= 2) {
+            return `${words[1]} ${words[0]}${words.length > 2 ? ' ' + words.slice(2).join(' ') : ''}`;
+          }
+        }
+        return `Incorrect: ${card.back}`;
+      };
+      
+      const attempts = new Set();
+      while (wrongOptions.length < 3 && attempts.size < 20) {
+        const wrong = generateWrongAnswer();
+        if (wrong !== card.back && !wrongOptions.includes(wrong)) {
+          wrongOptions.push(wrong);
+        }
+        attempts.add(wrong);
+      }
+      
+      // Fallback if still not enough
+      const fallbacks = [
+        `Incorrect answer`,
+        `Wrong choice`,
+        `Not the answer`
+      ];
+      
+      while (wrongOptions.length < 3) {
+        const fallback = fallbacks[wrongOptions.length];
+        if (fallback && !wrongOptions.includes(fallback)) {
+          wrongOptions.push(fallback);
+        }
       }
     }
     
@@ -466,7 +506,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
                       <strong>{String.fromCharCode(65 + mcOptions.indexOf(option))}.</strong> {option}
                     </Button>
                   ))}
-                  {!hintUsed && availableOptions.length > 2 && (
+                  {availableOptions.length > 2 && (
                     <Button 
                       variant="outline-dark" 
                       size="sm"
@@ -474,7 +514,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
                       className="d-flex align-items-center gap-2 align-self-center mt-2"
                     >
                       <Lightbulb size={18} />
-                      Remove Wrong Answer
+                      Remove Wrong Answer ({availableOptions.length - 1} remaining)
                     </Button>
                   )}
                 </div>
