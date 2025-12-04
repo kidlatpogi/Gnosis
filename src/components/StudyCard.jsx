@@ -61,7 +61,7 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
 
   // Generate similar words for multiple choice using word similarity
   const generateSimilarOptions = () => {
-    if (!card || allCards.length < 2) return [];
+    if (!card) return [];
     
     const correctAnswer = card.back.toLowerCase();
     const correctWords = correctAnswer.split(' ');
@@ -71,38 +71,56 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
       .filter(c => c.id !== card.id)
       .map(c => c.back);
     
-    // Score each answer by similarity
-    const scoredAnswers = otherAnswers.map(answer => {
-      const answerWords = answer.toLowerCase().split(' ');
-      let score = 0;
-      
-      // Same number of words bonus
-      if (answerWords.length === correctWords.length) score += 3;
-      
-      // Shared words bonus
-      const sharedWords = answerWords.filter(w => correctWords.includes(w)).length;
-      score += sharedWords * 5;
-      
-      // Similar length bonus
-      const lengthDiff = Math.abs(answer.length - card.back.length);
-      if (lengthDiff < 5) score += 2;
-      else if (lengthDiff < 10) score += 1;
-      
-      // First letter match bonus
-      if (answer[0].toLowerCase() === card.back[0].toLowerCase()) score += 2;
-      
-      return { answer, score };
-    });
+    let wrongOptions = [];
     
-    // Sort by score and take top 3
-    scoredAnswers.sort((a, b) => b.score - a.score);
-    const wrongOptions = scoredAnswers.slice(0, 3).map(s => s.answer);
+    if (otherAnswers.length > 0) {
+      // Score each answer by similarity
+      const scoredAnswers = otherAnswers.map(answer => {
+        const answerWords = answer.toLowerCase().split(' ');
+        let score = 0;
+        
+        // Same number of words bonus
+        if (answerWords.length === correctWords.length) score += 3;
+        
+        // Shared words bonus
+        const sharedWords = answerWords.filter(w => correctWords.includes(w)).length;
+        score += sharedWords * 5;
+        
+        // Similar length bonus
+        const lengthDiff = Math.abs(answer.length - card.back.length);
+        if (lengthDiff < 5) score += 2;
+        else if (lengthDiff < 10) score += 1;
+        
+        // First letter match bonus
+        if (answer[0].toLowerCase() === card.back[0].toLowerCase()) score += 2;
+        
+        return { answer, score };
+      });
+      
+      // Sort by score and take top 3
+      scoredAnswers.sort((a, b) => b.score - a.score);
+      wrongOptions = scoredAnswers.slice(0, 3).map(s => s.answer);
+      
+      // If we don't have enough similar options, fill with random
+      while (wrongOptions.length < 3 && wrongOptions.length < otherAnswers.length) {
+        const randomAnswer = otherAnswers[Math.floor(Math.random() * otherAnswers.length)];
+        if (!wrongOptions.includes(randomAnswer)) {
+          wrongOptions.push(randomAnswer);
+        }
+      }
+    }
     
-    // If we don't have enough similar options, fill with random
-    while (wrongOptions.length < 3 && wrongOptions.length < otherAnswers.length) {
-      const randomAnswer = otherAnswers[Math.floor(Math.random() * otherAnswers.length)];
-      if (!wrongOptions.includes(randomAnswer)) {
-        wrongOptions.push(randomAnswer);
+    // If still not enough options (e.g., only 1 card in deck), generate dummy options
+    const dummyOptions = [
+      'Option A',
+      'Option B', 
+      'Option C'
+    ];
+    
+    while (wrongOptions.length < 3) {
+      const dummy = dummyOptions[wrongOptions.length];
+      if (dummy !== card.back) {
+        wrongOptions.push(dummy);
       }
     }
     
