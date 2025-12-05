@@ -151,11 +151,12 @@ const Study = () => {
     if (!user || duration < 1) return; // Don't save sessions less than 1 minute
     
     try {
-      // Format date as YYYY-MM-DD in local timezone
+      // Format date as YYYY-MM-DD using Philippines timezone (GMT+8)
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
+      const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+      const year = phTime.getFullYear();
+      const month = String(phTime.getMonth() + 1).padStart(2, '0');
+      const day = String(phTime.getDate()).padStart(2, '0');
       const today = `${year}-${month}-${day}`;
       
       const studySessionsRef = collection(db, 'studySessions');

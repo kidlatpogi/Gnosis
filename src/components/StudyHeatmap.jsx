@@ -39,16 +39,18 @@ const StudyHeatmap = () => {
     }
   }, [user]);
 
-  // Generate last 365 days
+  // Generate last 365 days using Philippines timezone (GMT+8)
   const generateDates = () => {
     const dates = [];
-    // Get today in local timezone at midnight
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const date = today.getDate();
+    // Get current date in Philippines timezone (GMT+8)
+    const now = new Date();
+    const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
     
-    // Create a date object at midnight local time
+    const year = phTime.getFullYear();
+    const month = phTime.getMonth();
+    const date = phTime.getDate();
+    
+    // Create a date object at midnight in local context
     const endDate = new Date(year, month, date, 0, 0, 0, 0);
     
     // Go back 364 days from today
@@ -70,11 +72,12 @@ const StudyHeatmap = () => {
     return '#9be9a8'; // lightest
   };
 
-  // Format date to YYYY-MM-DD using local timezone
+  // Format date to YYYY-MM-DD using Philippines timezone (GMT+8)
   const formatDate = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const phTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const year = phTime.getFullYear();
+    const month = String(phTime.getMonth() + 1).padStart(2, '0');
+    const day = String(phTime.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
