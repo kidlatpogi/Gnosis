@@ -10,7 +10,7 @@ const NavigationBar = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate('/');
+      navigate('/login');
     } catch (error) {
       console.error('Sign out failed:', error);
     }
@@ -20,7 +20,7 @@ const NavigationBar = () => {
     <Navbar bg="dark" variant="dark" expand="lg" className="navbar-sticky">
       <Container>
         <Navbar.Brand 
-          onClick={() => navigate('/dashboard')} 
+          onClick={() => navigate(user ? '/dashboard' : '/')} 
           style={{ cursor: 'pointer' }}
           className="d-flex align-items-center gap-2 fw-bold"
         >
@@ -60,9 +60,9 @@ const NavigationBar = () => {
             ) : (
               <Button 
                 variant="outline-light" 
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/login')}
               >
-                Sign In
+                Login
               </Button>
             )}
           </Nav>
