@@ -39,25 +39,17 @@ const StudyHeatmap = () => {
     }
   }, [user]);
 
-  // Generate last 365 days using Philippines timezone (GMT+8)
+  // Generate last 365 days using local browser date
   const generateDates = () => {
     const dates = [];
-    // Get current date in Philippines timezone (GMT+8)
-    const now = new Date();
-    const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const today = new Date();
     
-    const year = phTime.getFullYear();
-    const month = phTime.getMonth();
-    const date = phTime.getDate();
-    
-    // Create a date object at midnight in local context
-    const endDate = new Date(year, month, date, 0, 0, 0, 0);
-    
-    // Go back 364 days from today
+    // Start from 364 days ago and go forward to today (365 total days)
     for (let i = 364; i >= 0; i--) {
-      const currentDate = new Date(endDate);
-      currentDate.setDate(currentDate.getDate() - i);
-      dates.push(currentDate);
+      const date = new Date();
+      date.setDate(today.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      dates.push(date);
     }
     
     return dates;
@@ -72,12 +64,11 @@ const StudyHeatmap = () => {
     return '#9be9a8'; // lightest
   };
 
-  // Format date to YYYY-MM-DD using Philippines timezone (GMT+8)
+  // Format date to YYYY-MM-DD using local browser date
   const formatDate = (date) => {
-    const phTime = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
-    const year = phTime.getFullYear();
-    const month = String(phTime.getMonth() + 1).padStart(2, '0');
-    const day = String(phTime.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
@@ -99,32 +90,32 @@ const StudyHeatmap = () => {
     return `${hours}h ${mins}m`;
   };
 
-  // Get day of week (0-6, where 0 is Sunday)
-  const getDayOfWeek = (date) => {
-    return date.getDay();
-  };
 
-  // Group dates by week
+  // Group dates by week (Sunday to Saturday)
   const groupByWeeks = (dates) => {
+    if (dates.length === 0) return [];
+    
     const weeks = [];
     let currentWeek = [];
-    let currentWeekStart = getDayOfWeek(dates[0]);
     
-    // Add empty cells for the first week
-    for (let i = 0; i < currentWeekStart; i++) {
+    // Add padding for the first week if it doesn't start on Sunday
+    const firstDayOfWeek = dates[0].getDay();
+    for (let i = 0; i < firstDayOfWeek; i++) {
       currentWeek.push(null);
     }
     
-    dates.forEach((date) => {
+    // Add all dates
+    for (const date of dates) {
       currentWeek.push(date);
       
+      // If we have a full week (Sunday included), push it and start a new week
       if (currentWeek.length === 7) {
         weeks.push(currentWeek);
         currentWeek = [];
       }
-    });
+    }
     
-    // Add the last incomplete week
+    // Add remaining dates as the last week
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
         currentWeek.push(null);
