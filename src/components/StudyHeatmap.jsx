@@ -43,12 +43,11 @@ const StudyHeatmap = () => {
   const generateDates = () => {
     const dates = [];
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     for (let i = 364; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      // Reset time to midnight UTC to avoid timezone issues
-      date.setHours(0, 0, 0, 0);
       dates.push(date);
     }
     
@@ -64,9 +63,12 @@ const StudyHeatmap = () => {
     return '#9be9a8'; // lightest
   };
 
-  // Format date to YYYY-MM-DD
+  // Format date to YYYY-MM-DD using local timezone
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   // Format duration for tooltip
