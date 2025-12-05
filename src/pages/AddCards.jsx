@@ -97,8 +97,16 @@ const AddCards = () => {
       setSaving(true);
       setError(null);
 
+      // Clean cards data - remove undefined values
+      const cleanedCards = cards.map(card => ({
+        id: card.id,
+        front: card.front,
+        back: card.back,
+        hint: card.hint || null // Convert undefined to null for Firebase
+      }));
+
       const deckRef = doc(db, 'decks', deckId);
-      await updateDoc(deckRef, { cards });
+      await updateDoc(deckRef, { cards: cleanedCards });
 
       navigate('/dashboard');
     } catch (err) {
