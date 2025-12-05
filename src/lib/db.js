@@ -29,9 +29,7 @@ export async function createDeck(userId, deckData) {
       throw new Error('Deck title is required');
     }
     
-    if (!deckData.cards || deckData.cards.length === 0) {
-      throw new Error('Deck must have at least one card');
-    }
+    // Cards can be empty initially - they will be added in the next step
 
     // Generate a unique deck ID
     const deckId = `deck_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -41,7 +39,7 @@ export async function createDeck(userId, deckData) {
     const newDeck = {
       title: deckData.title.trim(),
       subject: deckData.subject?.trim() || 'General',
-      cards: deckData.cards,
+      cards: deckData.cards || [], // Allow empty cards array
       createdAt: serverTimestamp(),
       creatorId: userId,
       isPublic: true // Default to public
