@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Container, Spinner, Alert, Button } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import StudyCard from '../components/StudyCard';
@@ -18,10 +18,33 @@ const Study = () => {
   const [dueCards, setDueCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [studyDuration, setStudyDuration] = useState(0);
 
   useEffect(() => {
     loadDeckAndProgress();
   }, [deckId, user]);
+
+  // Update study duration every minute
+  useEffect(() => {
+    if (!sessionStartTime) return;
+    
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - sessionStartTime) / 60000); // minutes
+      setStudyDuration(elapsed);
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, [sessionStartTime]);
+
+  // Save session when all cards are completed
+  useEffect(() => {
+    if (currentCardIndex >= dueCards.length && dueCards.length > 0 && sessionStartTime) {
+      const duration = Math.floor((Date.now() - sessionStartTime) / 60000);
+      saveStudySession(duration);
+      setSessionStartTime(null); // Reset timer
+    }
+  }, [currentCardIndex, dueCards.length, sessionStartTime]);
 
   const loadDeckAndProgress = async () => {
     try {
@@ -59,6 +82,11 @@ const Study = () => {
       });
 
       setDueCards(cardsToReview);
+      
+      // Start tracking study time
+      if (cardsToReview.length > 0) {
+        setSessionStartTime(Date.now());
+      }
     } catch (err) {
       console.error('Error loading deck:', err);
       setError(err.message);
@@ -119,7 +147,39 @@ const Study = () => {
     }
   };
 
-  const handleBackToDashboard = () => {
+  const saveStudySession = async (duration) => {
+    if (!user || duration < 1) return; // Don't save sessions less than 1 minute
+    
+    try {
+      // Format date as YYYY-MM-DD using local browser date
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      
+      const studySessionsRef = collection(db, 'studySessions');
+      
+      await addDoc(studySessionsRef, {
+        userId: user.uid,
+        deckId: deckId,
+        deckTitle: deck?.title || 'Unknown Deck',
+        date: today,
+        duration: duration, // in minutes
+        cardsStudied: currentCardIndex,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error saving study session:', err);
+    }
+  };
+
+  const handleBackToDashboard = async () => {
+    // Calculate and save study duration
+    if (sessionStartTime) {
+      const duration = Math.floor((Date.now() - sessionStartTime) / 60000); // Convert to minutes
+      await saveStudySession(duration);
+    }
     navigate('/dashboard');
   };
 
@@ -139,6 +199,8 @@ const Study = () => {
         // Load all cards from the deck for review again
         if (deckData.cards && deckData.cards.length > 0) {
           setDueCards(deckData.cards);
+          // Restart timer for new session
+          setSessionStartTime(Date.now());
         } else {
           setError('No cards in this deck');
         }

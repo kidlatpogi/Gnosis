@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs, 
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   orderBy,
@@ -29,9 +30,7 @@ export async function createDeck(userId, deckData) {
       throw new Error('Deck title is required');
     }
     
-    if (!deckData.cards || deckData.cards.length === 0) {
-      throw new Error('Deck must have at least one card');
-    }
+    // Cards can be empty initially - they will be added in the next step
 
     // Generate a unique deck ID
     const deckId = `deck_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -41,7 +40,7 @@ export async function createDeck(userId, deckData) {
     const newDeck = {
       title: deckData.title.trim(),
       subject: deckData.subject?.trim() || 'General',
-      cards: deckData.cards,
+      cards: deckData.cards || [], // Allow empty cards array
       createdAt: serverTimestamp(),
       creatorId: userId,
       isPublic: true // Default to public
@@ -277,6 +276,27 @@ export async function seedDatabase() {
       alert(`Error seeding database: ${error.message}`);
     }
     
+    throw error;
+  }
+}
+
+/**
+ * Delete a deck from Firestore
+ * @param {string} deckId - The ID of the deck to delete
+ * @returns {Promise<void>}
+ */
+export async function deleteDeck(deckId) {
+  try {
+    if (!deckId) {
+      throw new Error('Deck ID is required');
+    }
+
+    const deckRef = doc(db, 'decks', deckId);
+    await deleteDoc(deckRef);
+    
+    console.log('✅ Deck deleted successfully:', deckId);
+  } catch (error) {
+    console.error('❌ Error deleting deck:', error);
     throw error;
   }
 }
