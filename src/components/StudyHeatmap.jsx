@@ -123,7 +123,7 @@ const StudyHeatmap = () => {
 
   const dates = generateDates();
   const weeks = groupByWeeks(dates);
-  const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthLabels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
   if (loading) {
     return (
