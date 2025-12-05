@@ -7,6 +7,7 @@ import { getAllDecks, getUserProgress, seedDatabase } from '../lib/db';
 import { isCardDue } from '../utils/sm2_algorithm';
 import AddDeckModal from '../components/AddDeckModal';
 import DeckList from '../components/DeckList';
+import StudyHeatmap from '../components/StudyHeatmap';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -128,6 +129,11 @@ const Dashboard = () => {
               Create Deck
             </Button>
           </div>
+        </div>
+
+        {/* Study Activity Heatmap */}
+        <div className="mb-5">
+          <StudyHeatmap />
         </div>
 
         {/* Error Alert */}
