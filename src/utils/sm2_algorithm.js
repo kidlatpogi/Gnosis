@@ -1,17 +1,14 @@
 /**
- * Modified SM-2 Algorithm with Anki-style Learning Steps
+ * Modified SM-2 Algorithm with Binary Correct/Incorrect System
  * 
  * Learning States:
  * - 'new': Card never seen before
  * - 'learning': Short-term repetition (minutes/hours)
  * - 'review': Long-term repetition (days+)
  * 
- * @param {number} quality - Performance rating (1-5)
- *   1: Wrong - Review in 1 minute
- *   2: Hard/Hint - Review in 10 minutes  
- *   3: Good - Graduate to review or next day
- *   4: Easy - Longer interval
- *   5: Perfect - Even longer interval
+ * @param {number} quality - Performance rating (1-2 only)
+ *   1: Incorrect - Review in 1 minute
+ *   2: Correct - Advance to next interval
  * 
  * @param {Object} cardState - Current card state
  * @param {string} cardState.learningState - 'new', 'learning', or 'review'
@@ -41,17 +38,12 @@ export function calculateNextReview(quality, cardState = {}) {
   // LEARNING STATE (Short-term steps in minutes)
   if (learningState === 'new' || learningState === 'learning') {
     if (quality === 1) {
-      // Wrong - Reset to 1 minute
+      // Incorrect - Reset to 1 minute
       newState = 'learning';
       newInterval = 1; // 1 minute
       nextReview = new Date(now.getTime() + 1 * 60 * 1000);
-    } else if (quality === 2) {
-      // Hard/Hint - 10 minutes
-      newState = 'learning';
-      newInterval = 10; // 10 minutes
-      nextReview = new Date(now.getTime() + 10 * 60 * 1000);
     } else {
-      // Good (3+) - Graduate to review state (1 day)
+      // Correct - Graduate to review state (1 day)
       newState = 'review';
       newInterval = 1; // 1 day
       nextReview = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
@@ -59,38 +51,19 @@ export function calculateNextReview(quality, cardState = {}) {
   } 
   // REVIEW STATE (Long-term steps in days)
   else {
-    // Calculate new ease factor based on quality
-    if (quality >= 3) {
-      newEaseFactor = Math.max(
-        1.3,
-        easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-      );
-    }
-
     if (quality === 1) {
-      // Wrong - Back to learning state, 1 minute
+      // Incorrect - Back to learning state, 1 minute
       newState = 'learning';
       newInterval = 1; // minutes
       nextReview = new Date(now.getTime() + 1 * 60 * 1000);
-    } else if (quality === 2) {
-      // Hard - Back to learning, 10 minutes
-      newState = 'learning';
-      newInterval = 10; // minutes
-      nextReview = new Date(now.getTime() + 10 * 60 * 1000);
-    } else if (quality === 3) {
-      // Good - Use ease factor
+    } else {
+      // Correct - Increase interval by ease factor
+      newEaseFactor = Math.max(
+        1.3,
+        easeFactor + 0.1 // Increase ease factor each successful review
+      );
       newInterval = Math.round(interval * newEaseFactor);
       newInterval = Math.max(newInterval, 1); // At least 1 day
-      nextReview = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
-    } else if (quality === 4) {
-      // Easy - Longer interval
-      newInterval = Math.round(interval * newEaseFactor * 1.3);
-      newInterval = Math.max(newInterval, 2);
-      nextReview = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
-    } else {
-      // Perfect (5) - Much longer interval
-      newInterval = Math.round(interval * newEaseFactor * 1.5);
-      newInterval = Math.max(newInterval, 4);
       nextReview = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
     }
   }
@@ -106,16 +79,15 @@ export function calculateNextReview(quality, cardState = {}) {
 
 /**
  * Helper function to determine if a hint was used
- * If a hint was used, cap quality at 2 (Hard)
+ * In binary system, hints don't cap quality - user still rates Correct/Incorrect
  * 
- * @param {number} userQuality - User's self-reported quality
- * @param {boolean} hintUsed - Whether user used a hint
- * @returns {number} Adjusted quality rating
+ * @param {number} userQuality - User's self-reported quality (1 or 2)
+ * @param {boolean} hintUsed - Whether user used a hint (noted but doesn't affect rating)
+ * @returns {number} Quality rating (1 or 2)
  */
 export function adjustQualityForHint(userQuality, hintUsed) {
-  if (hintUsed) {
-    return Math.min(userQuality, 2);
-  }
+  // In binary system, hints don't change quality rating
+  // Just return the user's choice (1=Incorrect, 2=Correct)
   return userQuality;
 }
 

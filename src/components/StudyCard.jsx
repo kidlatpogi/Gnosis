@@ -1,16 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Badge, Form, ButtonGroup, ProgressBar, Alert } from 'react-bootstrap';
-import { Eye, Lightbulb, Check, X, RotateCcw, Sparkles } from 'lucide-react';
+import { Eye, Lightbulb, Check, X, RotateCcw, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { playSuccessSoundIfEnabled, playErrorSoundIfEnabled } from '../utils/sounds';
 
 /**
  * StudyCard Component - Enhanced with multiple study modes, hints, and celebrations
  */
 const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards = 1, allCards = [] }) => {
   const [studyMode, setStudyMode] = useState('flashcard');
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [cardOrientation, setCardOrientation] = useState(() => Math.random() > 0.5); // Randomly show front or back first
+  const [isFlipped, setIsFlipped] = useState(cardOrientation); // Start flipped if random choice says so
   const [hintShown, setHintShown] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
+  const [soundsEnabled, setSoundsEnabled] = useState(true);
+
+  // Re-randomize orientation for EACH new card
+  useEffect(() => {
+    const newOrientation = Math.random() > 0.5;
+    setCardOrientation(newOrientation);
+    setIsFlipped(newOrientation);
+    // Reset other states when card changes
+    setHintShown(false);
+    setHintUsed(false);
+    setStudyMode('flashcard');
+    setFeedback(null);
+    setTypedAnswer('');
+    setAutoRated(false);
+  }, [card?.id]); // Re-run when card ID changes
+
+  // Local wrapper for sound functions that respects component state
+  const playSuccessSound = () => {
+    if (soundsEnabled) {
+      playSuccessSoundIfEnabled();
+    }
+  };
+
+  const playErrorSound = () => {
+    if (soundsEnabled) {
+      playErrorSoundIfEnabled();
+    }
+  };
   const [typedAnswer, setTypedAnswer] = useState('');
   const [feedback, setFeedback] = useState(null);
   const [mcOptions, setMcOptions] = useState([]);
@@ -74,30 +104,35 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     let wrongOptions = [];
     
     if (otherAnswers.length > 0) {
-      // Score each answer by similarity
+      // Score each answer by similarity - FAVOR MORE SIMILAR OPTIONS (HARDER)
       const scoredAnswers = otherAnswers.map(answer => {
         const answerWords = answer.toLowerCase().split(' ');
         let score = 0;
         
-        // Same number of words bonus
-        if (answerWords.length === correctWords.length) score += 3;
+        // Same number of words MUCH BIGGER bonus (harder distractors)
+        if (answerWords.length === correctWords.length) score += 15;
         
-        // Shared words bonus
+        // Shared words MUCH BIGGER bonus
         const sharedWords = answerWords.filter(w => correctWords.includes(w)).length;
-        score += sharedWords * 5;
+        score += sharedWords * 20;
         
-        // Similar length bonus
+        // Very similar length bonus (harder distractors)
         const lengthDiff = Math.abs(answer.length - card.back.length);
-        if (lengthDiff < 5) score += 2;
-        else if (lengthDiff < 10) score += 1;
+        if (lengthDiff < 3) score += 10;
+        else if (lengthDiff < 8) score += 5;
         
-        // First letter match bonus
-        if (answer[0].toLowerCase() === card.back[0].toLowerCase()) score += 2;
+        // First letter match strong bonus (harder distractors)
+        if (answer[0].toLowerCase() === card.back[0].toLowerCase()) score += 8;
+        
+        // Last letter match bonus (harder)
+        if (answer[answer.length - 1].toLowerCase() === card.back[card.back.length - 1].toLowerCase()) score += 6;
         
         return { answer, score };
       });
       
-      // Sort by score and take top 3
+      // Sort by score DESC to get MOST SIMILAR options (harder)
+      scoredAnswers.sort((a, b) => b.score - a.score);
+      wrongOptions = scoredAnswers.slice(0, 3).map(item => item.answer);
       scoredAnswers.sort((a, b) => b.score - a.score);
       wrongOptions = scoredAnswers.slice(0, 3).map(s => s.answer);
       
@@ -302,10 +337,13 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     
     if (isCorrect) {
       celebrate();
+      playSuccessSound();
+    } else {
+      playErrorSound();
     }
     
     if (!autoRated) {
-      const quality = isCorrect ? (hintUsed ? 2 : 3) : 1;
+      const quality = isCorrect ? 2 : 1; // Binary: 2=Correct, 1=Incorrect
       setTimeout(() => {
         setAutoRated(true);
         onRate(quality, hintUsed);
@@ -327,10 +365,13 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     
     if (isCorrect) {
       celebrate();
+      playSuccessSound();
+    } else {
+      playErrorSound();
     }
     
     if (!autoRated) {
-      const quality = isCorrect ? (hintUsed ? 2 : 3) : 1;
+      const quality = isCorrect ? 2 : 1; // Binary: 2=Correct, 1=Incorrect
       setTimeout(() => {
         setAutoRated(true);
         onRate(quality, hintUsed);
@@ -339,6 +380,13 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
   };
 
   const handleRate = (quality) => {
+    // Play appropriate sound for flashcard mode
+    if (quality === 2) { // Correct in binary system
+      playSuccessSound();
+    } else {
+      playErrorSound();
+    }
+    
     onRate(quality, hintUsed);
     // Reset for next card
     setIsFlipped(false);
@@ -379,6 +427,20 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
 
   return (
     <div className="d-flex flex-column align-items-center gap-4" style={{ minHeight: '500px', width: '100%' }}>
+      {/* Sound Toggle Button */}
+      <div style={{ width: '100%', maxWidth: '700px', display: 'flex', justifyContent: 'flex-end' }}>
+        <Button 
+          variant="outline-secondary"
+          size="sm"
+          onClick={() => setSoundsEnabled(!soundsEnabled)}
+          className="d-flex align-items-center gap-2"
+          title={soundsEnabled ? 'Sounds ON - Click to mute' : 'Sounds OFF - Click to enable'}
+        >
+          {soundsEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          <small>{soundsEnabled ? 'Sound ON' : 'Sound OFF'}</small>
+        </Button>
+      </div>
+
       {/* Progress Bar */}
       <div className="w-100" style={{ maxWidth: '700px' }}>
         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -612,64 +674,34 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
 
       {/* Rating Buttons (Flashcard mode only) */}
       {studyMode === 'flashcard' && isFlipped && (
-        <div className="w-100" style={{ maxWidth: '700px' }}>
-          <p className="text-center mb-3 fw-bold" style={{ fontSize: '1.1rem' }}>How well did you know this?</p>
+        <div className="w-100" style={{ maxWidth: '500px' }}>
+          <p className="text-center mb-4 fw-bold" style={{ fontSize: '1.2rem' }}>Did you get it right?</p>
           
-          <div className="d-grid gap-2" style={{ gridTemplateColumns: 'repeat(4, 1fr)', display: 'grid' }}>
+          <div className="d-grid gap-3" style={{ gridTemplateColumns: 'repeat(2, 1fr)', display: 'grid' }}>
             <Button 
               variant="outline-danger" 
               onClick={() => handleRate(1)}
-              className="py-3"
-              style={{ border: '2px solid #dc3545', fontWeight: 'bold' }}
+              className="py-4"
+              style={{ border: '3px solid #dc3545', fontWeight: 'bold', fontSize: '1.1rem' }}
             >
-              <div className="d-flex flex-column">
-                <span className="fw-bold">Again</span>
-                <small style={{ fontSize: '0.75rem' }}>1 min</small>
-              </div>
-            </Button>
-            
-            <Button 
-              variant="outline-warning" 
-              onClick={() => handleRate(2)}
-              className="py-3"
-              style={{ border: '2px solid #ffc107', fontWeight: 'bold' }}
-            >
-              <div className="d-flex flex-column">
-                <span className="fw-bold">Hard</span>
-                <small style={{ fontSize: '0.75rem' }}>10 min</small>
-              </div>
-            </Button>
-            
-            <Button 
-              variant="outline-primary" 
-              onClick={() => handleRate(3)}
-              className="py-3"
-              style={{ border: '2px solid #0d6efd', fontWeight: 'bold' }}
-            >
-              <div className="d-flex flex-column">
-                <span className="fw-bold">Good</span>
-                <small style={{ fontSize: '0.75rem' }}>1 day</small>
+              <div className="d-flex flex-column align-items-center">
+                <X size={32} className="mb-2" />
+                <span>Incorrect</span>
               </div>
             </Button>
             
             <Button 
               variant="outline-success" 
-              onClick={() => handleRate(4)}
-              className="py-3"
-              style={{ border: '2px solid #198754', fontWeight: 'bold' }}
+              onClick={() => handleRate(2)}
+              className="py-4"
+              style={{ border: '3px solid #198754', fontWeight: 'bold', fontSize: '1.1rem' }}
             >
-              <div className="d-flex flex-column">
-                <span className="fw-bold">Easy</span>
-                <small style={{ fontSize: '0.75rem' }}>4 days</small>
+              <div className="d-flex flex-column align-items-center">
+                <Check size={32} className="mb-2" />
+                <span>Correct</span>
               </div>
             </Button>
           </div>
-
-          {hintUsed && (
-            <Alert variant="warning" className="mt-3 text-center mb-0" style={{ border: '2px solid #000' }}>
-              <small className="fw-bold">⚠️ Hint was used - Quality capped at "Hard"</small>
-            </Alert>
-          )}
         </div>
       )}
     </div>
