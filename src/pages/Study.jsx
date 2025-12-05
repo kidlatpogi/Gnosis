@@ -151,7 +151,13 @@ const Study = () => {
     if (!user || duration < 1) return; // Don't save sessions less than 1 minute
     
     try {
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Format date as YYYY-MM-DD in local timezone
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+      
       const studySessionsRef = collection(db, 'studySessions');
       
       await addDoc(studySessionsRef, {

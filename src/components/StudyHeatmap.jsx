@@ -42,13 +42,20 @@ const StudyHeatmap = () => {
   // Generate last 365 days
   const generateDates = () => {
     const dates = [];
+    // Get today in local timezone at midnight
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const date = today.getDate();
     
+    // Create a date object at midnight local time
+    const endDate = new Date(year, month, date, 0, 0, 0, 0);
+    
+    // Go back 364 days from today
     for (let i = 364; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      dates.push(date);
+      const currentDate = new Date(endDate);
+      currentDate.setDate(currentDate.getDate() - i);
+      dates.push(currentDate);
     }
     
     return dates;
