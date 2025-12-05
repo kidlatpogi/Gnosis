@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs, 
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   orderBy,
@@ -275,6 +276,27 @@ export async function seedDatabase() {
       alert(`Error seeding database: ${error.message}`);
     }
     
+    throw error;
+  }
+}
+
+/**
+ * Delete a deck from Firestore
+ * @param {string} deckId - The ID of the deck to delete
+ * @returns {Promise<void>}
+ */
+export async function deleteDeck(deckId) {
+  try {
+    if (!deckId) {
+      throw new Error('Deck ID is required');
+    }
+
+    const deckRef = doc(db, 'decks', deckId);
+    await deleteDoc(deckRef);
+    
+    console.log('✅ Deck deleted successfully:', deckId);
+  } catch (error) {
+    console.error('❌ Error deleting deck:', error);
     throw error;
   }
 }

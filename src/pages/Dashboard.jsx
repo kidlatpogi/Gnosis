@@ -150,6 +150,7 @@ const Dashboard = () => {
         deckStats={deckStats}
         onStudy={handleStudy}
         onEdit={handleEditDeck}
+        onDelete={() => loadDecks()}
       />
 
         {/* Empty State */}

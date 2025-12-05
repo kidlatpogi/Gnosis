@@ -1,7 +1,38 @@
-import { Row, Col, Card, Button, Badge, ButtonGroup } from 'react-bootstrap';
-import { BookOpen, Clock, TrendingUp, Edit2 } from 'lucide-react';
+import { Row, Col, Card, Button, Badge, ButtonGroup, Modal } from 'react-bootstrap';
+import { BookOpen, Clock, TrendingUp, Edit2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { deleteDeck } from '../lib/db';
 
-const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
+const DeckList = ({ decks, deckStats, onStudy, onEdit, onDelete }) => {
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deckToDelete, setDeckToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteClick = (deck) => {
+    setDeckToDelete(deck);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deckToDelete) return;
+
+    try {
+      setDeleting(true);
+      await deleteDeck(deckToDelete.id);
+      setShowDeleteModal(false);
+      setDeckToDelete(null);
+      
+      // Call parent callback if provided
+      if (onDelete) {
+        onDelete(deckToDelete.id);
+      }
+    } catch (error) {
+      console.error('Error deleting deck:', error);
+      alert('Failed to delete deck. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
   if (!decks || decks.length === 0) {
     return (
       <Card className="text-center p-5 shadow-sm">
@@ -16,7 +47,8 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
   }
 
   return (
-    <Row xs={1} md={2} lg={3} className="g-5">
+    <>
+      <Row xs={1} md={2} lg={3} className="g-5">
       {decks.map((deck) => {
         const stats = deckStats?.[deck.id] || { 
           total: deck.cards?.length || 0, 
@@ -71,7 +103,7 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
                 </div>
 
                 {/* Action Buttons */}
-                <ButtonGroup className="w-100">
+                <ButtonGroup className="w-100 gap-1">
                   <Button 
                     variant={stats.due > 0 ? "primary" : "outline-primary"}
                     onClick={() => {
@@ -83,7 +115,7 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
                     }}
                     disabled={stats.total === 0}
                     style={{ 
-                      flex: '1 1 70%',
+                      flex: '1 1 60%',
                       fontWeight: 600,
                       fontSize: '1rem',
                       padding: '0.75rem'
@@ -105,11 +137,21 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
                     variant="outline-dark"
                     onClick={() => onEdit && onEdit(deck)}
                     style={{ 
-                      flex: '1 1 30%',
+                      flex: '1 1 20%',
                       fontWeight: 600
                     }}
                   >
                     <Edit2 size={18} />
+                  </Button>
+                  <Button 
+                    variant="outline-danger"
+                    onClick={() => handleDeleteClick(deck)}
+                    style={{ 
+                      flex: '1 1 20%',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Trash2 size={18} />
                   </Button>
                 </ButtonGroup>
 
@@ -124,7 +166,35 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit }) => {
           </Col>
         );
       })}
-    </Row>
+      </Row>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => !deleting && setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton disabled={deleting}>
+          <Modal.Title>⚠️ Delete Deck</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete <strong>"{deckToDelete?.title}"</strong>?</p>
+          <p className="text-muted mb-0">This action cannot be undone. All cards in this deck will be permanently deleted.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button 
+            variant="outline-secondary" 
+            onClick={() => setShowDeleteModal(false)}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleConfirmDelete}
+            disabled={deleting}
+          >
+            {deleting ? 'Deleting...' : 'Delete Deck'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 
