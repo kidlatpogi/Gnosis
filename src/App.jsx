@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Container } from 'react-bootstrap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import NavigationBar from './components/Navbar';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Study from './pages/Study';
@@ -23,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return user ? children : <Navigate to="/" replace />;
+  return user ? children : <Navigate to="/login" replace />;
 };
 
 function App() {
@@ -33,7 +34,8 @@ function App() {
         <Container fluid className="min-vh-100 d-flex flex-column p-0">
           <NavigationBar />
           <Routes>
-            <Route path="/" element={<Login />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
             <Route 
               path="/dashboard" 
               element={

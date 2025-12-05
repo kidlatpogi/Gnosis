@@ -8,3 +8,34 @@
 .min-vh-100 {
   min-height: 100vh;
 }
+
+/* Landing Page Styles */
+.landing-page {
+  overflow-x: hidden;
+}
+
+.hero-section {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+  position: relative;
+}
+
+.min-vh-75 {
+  min-height: 75vh;
+}
+
+.features-section .card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.features-section .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.how-it-works-section {
+  background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+}
+
+.cta-section {
+  background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}

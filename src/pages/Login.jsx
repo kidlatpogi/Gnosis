@@ -1,5 +1,5 @@
 import { Container, Card, Button, Alert } from 'react-bootstrap';
-import { LogIn } from 'lucide-react';
+import { LogIn, Brain } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -31,7 +31,7 @@ const Login = () => {
       <Card className="shadow-lg" style={{ maxWidth: '500px', width: '100%' }}>
         <Card.Body className="p-5 text-center">
           <div className="mb-4">
-            <h1 className="display-3 mb-2">🧠</h1>
+            <Brain size={80} className="mb-3 text-primary" />
             <h2 className="fw-bold mb-3">Gnosis</h2>
             <p className="text-muted">
               Master knowledge through intelligent spaced repetition
@@ -52,7 +52,7 @@ const Login = () => {
               onClick={handleGoogleSignIn}
             >
               <LogIn size={20} />
-              Sign in with Google
+              Login with Google
             </Button>
           </div>
 
