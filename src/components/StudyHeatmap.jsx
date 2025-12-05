@@ -47,6 +47,8 @@ const StudyHeatmap = () => {
     for (let i = 364; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
+      // Reset time to midnight UTC to avoid timezone issues
+      date.setHours(0, 0, 0, 0);
       dates.push(date);
     }
     
@@ -168,15 +170,29 @@ const StudyHeatmap = () => {
             {/* Heatmap grid */}
             <div>
               {/* Month labels */}
-              <div style={{ display: 'flex', marginBottom: '4px', height: '14px' }}>
+              <div style={{ display: 'flex', marginBottom: '7px', height: '14px' }}>
                 {weeks.map((week, weekIndex) => {
                   const firstDate = week.find(d => d !== null);
-                  const showMonth = firstDate && firstDate.getDate() <= 7;
+                  if (!firstDate) {
+                    return <div key={weekIndex} style={{ width: '11px', marginRight: '3px' }} />;
+                  }
+                  
+                  // Show month label only if it's the first week of the month or first week overall
+                  let showMonth = false;
+                  if (weekIndex === 0) {
+                    showMonth = true;
+                  } else {
+                    const prevWeek = weeks[weekIndex - 1];
+                    const prevDate = prevWeek.find(d => d !== null);
+                    if (prevDate && firstDate.getMonth() !== prevDate.getMonth()) {
+                      showMonth = true;
+                    }
+                  }
                   
                   return (
                     <div key={weekIndex} style={{ width: '11px', marginRight: '3px' }}>
                       {showMonth && (
-                        <span className="text-muted" style={{ fontSize: '9px' }}>
+                        <span className="text-muted" style={{ fontSize: '9px', whiteSpace: 'nowrap' }}>
                           {monthLabels[firstDate.getMonth()]}
                         </span>
                       )}
