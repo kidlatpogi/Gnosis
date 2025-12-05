@@ -36,6 +36,9 @@ const StudyHeatmap = () => {
 
     if (user) {
       loadStudyData();
+      // Refresh every 30 seconds to catch recent study sessions
+      const interval = setInterval(loadStudyData, 30000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 

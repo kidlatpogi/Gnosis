@@ -14,86 +14,71 @@ const Study = () => {
   const navigate = useNavigate();
   
   const [deck, setDeck] = useState(null);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [dueCards, setDueCards] = useState([]);
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [cardsToRetry, setCardsToRetry] = useState([]);
+  const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
-  const [studyDuration, setStudyDuration] = useState(0);
 
   useEffect(() => {
-    loadDeckAndProgress();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Load deck
+        const deckRef = doc(db, 'decks', deckId);
+        const deckSnap = await getDoc(deckRef);
+
+        if (!deckSnap.exists()) {
+          setError('Deck not found');
+          return;
+        }
+
+        const deckData = { id: deckSnap.id, ...deckSnap.data() };
+        setDeck(deckData);
+
+        if (!user) {
+          setError('Please log in to study');
+          return;
+        }
+
+        // Load user progress
+        const progressRef = doc(db, 'user_progress', `${user.uid}_${deckId}`);
+        const progressSnap = await getDoc(progressRef);
+
+        const userProgress = progressSnap.exists() ? progressSnap.data() : { cards: {} };
+
+        // Filter cards that are due for review
+        const cardsToReview = deckData.cards.filter(card => {
+          const cardProgress = userProgress.cards?.[card.id];
+          if (!cardProgress) return true; // New card
+          return isCardDue(cardProgress.nextReviewDate);
+        });
+
+        // If no cards are due but deck has cards, load all cards for review
+        const finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
+        setDueCards(finalCards);
+        
+        // Start tracking study time if there are cards
+        if (finalCards.length > 0) {
+          setSessionStartTime(Date.now());
+        }
+      } catch (err) {
+        console.error('Error loading deck:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadData();
+    }
   }, [deckId, user]);
-
-  // Update study duration every minute
-  useEffect(() => {
-    if (!sessionStartTime) return;
-    
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - sessionStartTime) / 60000); // minutes
-      setStudyDuration(elapsed);
-    }, 60000); // Update every minute
-    
-    return () => clearInterval(interval);
-  }, [sessionStartTime]);
-
-  // Save session when all cards are completed
-  useEffect(() => {
-    if (currentCardIndex >= dueCards.length && dueCards.length > 0 && sessionStartTime) {
-      const duration = Math.floor((Date.now() - sessionStartTime) / 60000);
-      saveStudySession(duration);
-      setSessionStartTime(null); // Reset timer
-    }
-  }, [currentCardIndex, dueCards.length, sessionStartTime]);
-
-  const loadDeckAndProgress = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Load deck
-      const deckRef = doc(db, 'decks', deckId);
-      const deckSnap = await getDoc(deckRef);
-
-      if (!deckSnap.exists()) {
-        setError('Deck not found');
-        return;
-      }
-
-      const deckData = { id: deckSnap.id, ...deckSnap.data() };
-      setDeck(deckData);
-
-      if (!user) {
-        setError('Please log in to study');
-        return;
-      }
-
-      // Load user progress
-      const progressRef = doc(db, 'user_progress', `${user.uid}_${deckId}`);
-      const progressSnap = await getDoc(progressRef);
-
-      const userProgress = progressSnap.exists() ? progressSnap.data() : { cards: {} };
-
-      // Filter cards that are due for review
-      const cardsToReview = deckData.cards.filter(card => {
-        const cardProgress = userProgress.cards?.[card.id];
-        if (!cardProgress) return true; // New card
-        return isCardDue(cardProgress.nextReviewDate);
-      });
-
-      setDueCards(cardsToReview);
-      
-      // Start tracking study time
-      if (cardsToReview.length > 0) {
-        setSessionStartTime(Date.now());
-      }
-    } catch (err) {
-      console.error('Error loading deck:', err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleRateCard = async (quality, hintUsed) => {
     try {
@@ -139,6 +124,15 @@ const Study = () => {
 
       await setDoc(progressRef, updatedProgress);
 
+      // Track round statistics
+      if (quality === 1) {
+        // Mark for retry (Again)
+        setCardsToRetry([...cardsToRetry, currentCard]);
+        setRoundStats({ ...roundStats, incorrect: roundStats.incorrect + 1 });
+      } else {
+        setRoundStats({ ...roundStats, correct: roundStats.correct + 1 });
+      }
+
       // Move to next card
       setCurrentCardIndex(prev => prev + 1);
     } catch (err) {
@@ -148,7 +142,7 @@ const Study = () => {
   };
 
   const saveStudySession = async (duration) => {
-    if (!user || duration < 1) return; // Don't save sessions less than 1 minute
+    if (!user || duration < 1 || !deck) return; // Don't save sessions less than 1 minute
     
     try {
       // Format date as YYYY-MM-DD using local browser date
@@ -163,7 +157,7 @@ const Study = () => {
       await addDoc(studySessionsRef, {
         userId: user.uid,
         deckId: deckId,
-        deckTitle: deck?.title || 'Unknown Deck',
+        deckTitle: deck.title || 'Unknown Deck',
         date: today,
         duration: duration, // in minutes
         cardsStudied: currentCardIndex,
@@ -171,6 +165,18 @@ const Study = () => {
       });
     } catch (err) {
       console.error('Error saving study session:', err);
+    }
+  };
+
+  const handleStartNextRound = () => {
+    if (cardsToRetry.length > 0) {
+      // Start a new round with cards that were marked 'Again'
+      setDueCards(cardsToRetry);
+      setCardsToRetry([]);
+      setCurrentCardIndex(0);
+      setCurrentRound(currentRound + 1);
+      setRoundStats({ correct: 0, incorrect: 0 });
+      setSessionStartTime(Date.now()); // Restart timer for new round
     }
   };
 
@@ -257,6 +263,9 @@ const Study = () => {
               <span className="badge bg-primary" style={{ fontSize: '0.9rem' }}>
                 {deck?.subject}
               </span>
+              <span className="badge bg-info ms-2" style={{ fontSize: '0.9rem' }}>
+                Round {currentRound}
+              </span>
             </div>
           </div>
         </div>
@@ -264,41 +273,76 @@ const Study = () => {
         {/* Study Card */}
         <div className="d-flex justify-content-center">
           <div style={{ width: '100%', maxWidth: '100%' }}>
-            <StudyCard
-              card={dueCards[currentCardIndex]}
-              onRate={handleRateCard}
-              cardsRemaining={dueCards.length - currentCardIndex}
-              currentIndex={currentCardIndex}
-              totalCards={dueCards.length}
-              allCards={dueCards}
-            />
+            {currentCardIndex < dueCards.length && (
+              <StudyCard
+                card={dueCards[currentCardIndex]}
+                onRate={handleRateCard}
+                cardsRemaining={dueCards.length - currentCardIndex}
+                currentIndex={currentCardIndex}
+                totalCards={dueCards.length}
+                allCards={dueCards}
+              />
+            )}
           </div>
         </div>
 
         {/* Session Complete */}
-        {currentCardIndex >= dueCards.length && (
+        {currentCardIndex >= dueCards.length && dueCards.length > 0 && (
           <div className="text-center mt-5">
             <div className="card glass-card shadow-lg p-5 rounded-3 mx-auto" style={{ maxWidth: '500px' }}>
-              <h3 className="mb-3">🎉 Great Job!</h3>
-              <p className="text-muted mb-4">You've completed this study session</p>
-              <div className="d-flex gap-3 justify-content-center">
-                <Button 
-                  variant="outline-dark" 
-                  size="lg" 
-                  onClick={handleReviewAgain}
-                  className="px-4"
-                >
-                  Review Again
-                </Button>
-                <Button 
-                  variant="dark" 
-                  size="lg" 
-                  onClick={handleBackToDashboard}
-                  className="px-4"
-                >
-                  Return to Dashboard
-                </Button>
+              <h3 className="mb-3">🎉 Round {currentRound} Complete!</h3>
+              <div className="mb-4">
+                <div className="mb-2">
+                  <span className="badge bg-success me-2">✓ Correct: {roundStats.correct}</span>
+                  <span className="badge bg-danger">✗ To Review: {cardsToRetry.length}</span>
+                </div>
               </div>
+              
+              {cardsToRetry.length > 0 ? (
+                <>
+                  <p className="text-muted mb-4">You have {cardsToRetry.length} card(s) to review. Let's practice them again!</p>
+                  <div className="d-flex gap-3 justify-content-center">
+                    <Button 
+                      variant="primary" 
+                      size="lg" 
+                      onClick={handleStartNextRound}
+                      className="px-4"
+                    >
+                      Start Round {currentRound + 1}
+                    </Button>
+                    <Button 
+                      variant="outline-dark" 
+                      size="lg" 
+                      onClick={handleBackToDashboard}
+                      className="px-4"
+                    >
+                      Finish & Return
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-muted mb-4">Perfect! You've mastered all cards this round!</p>
+                  <div className="d-flex gap-3 justify-content-center">
+                    <Button 
+                      variant="outline-dark" 
+                      size="lg" 
+                      onClick={handleReviewAgain}
+                      className="px-4"
+                    >
+                      Review All Again
+                    </Button>
+                    <Button 
+                      variant="dark" 
+                      size="lg" 
+                      onClick={handleBackToDashboard}
+                      className="px-4"
+                    >
+                      Return to Dashboard
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { Container, Button, Row, Col, Card } from 'react-bootstrap';
-import { Brain, Zap, Target, TrendingUp, BookOpen, Heart } from 'lucide-react';
+import { Brain, Zap, Target, TrendingUp, BookOpen, Heart, Volume2, Shuffle, Repeat2, Lightbulb } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
@@ -68,10 +68,9 @@ const Landing = () => {
                   <div className="mb-3 text-primary">
                     <Zap size={48} />
                   </div>
-                  <h4 className="fw-bold mb-3">Smart Algorithm</h4>
+                  <h4 className="fw-bold mb-3">Smart SM-2 Algorithm</h4>
                   <p className="text-muted">
-                    Our SM-2 spaced repetition algorithm adapts to your learning 
-                    pace, showing you cards exactly when you need to review them.
+                    Our advanced spaced repetition algorithm adapts to your learning pace, showing you cards exactly when you need to review them.
                   </p>
                 </Card.Body>
               </Card>
@@ -81,12 +80,67 @@ const Landing = () => {
               <Card className="h-100 border-0 shadow-sm">
                 <Card.Body className="p-4 text-center">
                   <div className="mb-3 text-success">
-                    <Target size={48} />
+                    <Repeat2 size={48} />
                   </div>
-                  <h4 className="fw-bold mb-3">Mastery Tracking</h4>
+                  <h4 className="fw-bold mb-3">Multi-Round Sessions</h4>
                   <p className="text-muted">
-                    Track your progress with visual mastery indicators. Watch as 
-                    your knowledge solidifies through strategic review sessions.
+                    Study until mastery! Cards marked incorrect automatically enter a retry round. Keep learning until perfect recall.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-info">
+                    <Shuffle size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Randomized Cards</h4>
+                  <p className="text-muted">
+                    Each study session randomizes card orientation. Remember the answer, not the position. True learning, not memorization.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-danger">
+                    <Volume2 size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Brain-Triggering Sounds</h4>
+                  <p className="text-muted">
+                    Get exciting audio feedback on correct answers. Toggle sounds on/off anytime. Multi-sensory learning boost!
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-warning">
+                    <Lightbulb size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Harder Multiple Choice</h4>
+                  <p className="text-muted">
+                    Challenge yourself with intelligent distractors! Our system generates contextually similar wrong answers for deeper learning.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-secondary">
+                    <TrendingUp size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">GitHub-Style Heatmap</h4>
+                  <p className="text-muted">
+                    Visualize your study consistency with a 365-day activity heatmap. Watch your learning streak grow day by day.
                   </p>
                 </Card.Body>
               </Card>
@@ -98,10 +152,23 @@ const Landing = () => {
                   <div className="mb-3 text-info">
                     <BookOpen size={48} />
                   </div>
-                  <h4 className="fw-bold mb-3">Unlimited Decks</h4>
+                  <h4 className="fw-bold mb-3">Multiple Study Modes</h4>
                   <p className="text-muted">
-                    Create unlimited decks for any subject. Organize your learning 
-                    materials the way that works best for you.
+                    Choose how you learn: Flashcard mode, Multiple Choice, or Type-to-Answer. Mix and match for maximum retention.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-success">
+                    <Target size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Instant Mastery Feedback</h4>
+                  <p className="text-muted">
+                    Simple Correct/Incorrect rating system. No overthinking—focus on learning what matters most.
                   </p>
                 </Card.Body>
               </Card>
@@ -113,40 +180,9 @@ const Landing = () => {
                   <div className="mb-3 text-danger">
                     <Heart size={48} />
                   </div>
-                  <h4 className="fw-bold mb-3">Unlimited Hearts</h4>
+                  <h4 className="fw-bold mb-3">Free & Unlimited</h4>
                   <p className="text-muted">
-                    Learn at your own pace without restrictions. No lives to lose, 
-                    no paywalls—just pure, uninterrupted learning.
-                  </p>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6} lg={4}>
-              <Card className="h-100 border-0 shadow-sm">
-                <Card.Body className="p-4 text-center">
-                  <div className="mb-3 text-warning">
-                    <TrendingUp size={48} />
-                  </div>
-                  <h4 className="fw-bold mb-3">Performance Analytics</h4>
-                  <p className="text-muted">
-                    Monitor your learning journey with detailed statistics and 
-                    insights about your study patterns and retention rates.
-                  </p>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            <Col md={6} lg={4}>
-              <Card className="h-100 border-0 shadow-sm">
-                <Card.Body className="p-4 text-center">
-                  <div className="mb-3 text-secondary">
-                    <Brain size={48} />
-                  </div>
-                  <h4 className="fw-bold mb-3">Hints & Support</h4>
-                  <p className="text-muted">
-                    Stuck on a card? Get unlimited hints to guide your learning 
-                    without breaking your study flow.
+                    Create unlimited decks with unlimited cards. No paywalls, no restrictions, no credit card needed.
                   </p>
                 </Card.Body>
               </Card>
