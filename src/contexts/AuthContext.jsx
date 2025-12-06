@@ -90,10 +90,21 @@ export const AuthProvider = ({ children }) => {
             
             console.log('✅ New user created with code:', userCode);
           } else {
-            // Update last login
-            await setDoc(userRef, {
-              lastLogin: new Date().toISOString()
-            }, { merge: true });
+            // Check if existing user has a userCode, if not, generate one
+            const userData = userSnap.data();
+            if (!userData.userCode) {
+              const userCode = await getUniqueCode();
+              await setDoc(userRef, {
+                userCode: userCode,
+                lastLogin: new Date().toISOString()
+              }, { merge: true });
+              console.log('✅ Generated code for existing user:', userCode);
+            } else {
+              // Update last login only
+              await setDoc(userRef, {
+                lastLogin: new Date().toISOString()
+              }, { merge: true });
+            }
           }
         } else {
           // User is signed out
