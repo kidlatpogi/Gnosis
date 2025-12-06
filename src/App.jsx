@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Container } from 'react-bootstrap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import NavigationBar from './components/Navbar';
+import Footer from './components/Footer';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -97,6 +98,7 @@ function App() {
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <Footer />
         </Container>
       </Router>
     </AuthProvider>
