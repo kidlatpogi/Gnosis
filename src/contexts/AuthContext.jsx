@@ -4,8 +4,44 @@ import {
   signOut as firebaseSignOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
+
+// Helper function to generate unique 6-digit code
+function generateUserCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Helper function to check if code exists
+async function codeExists(code) {
+  try {
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    
+    for (const doc of querySnapshot.docs) {
+      if (doc.data().userCode === code) {
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error checking code:', error);
+    return false;
+  }
+}
+
+// Generate a unique code
+async function getUniqueCode() {
+  let code = generateUserCode();
+  let attempts = 0;
+  
+  while (await codeExists(code) && attempts < 10) {
+    code = generateUserCode();
+    attempts++;
+  }
+  
+  return code;
+}
 
 // Create Auth Context
 const AuthContext = createContext({});
@@ -38,15 +74,21 @@ export const AuthProvider = ({ children }) => {
           const userSnap = await getDoc(userRef);
           
           if (!userSnap.exists()) {
+            // Generate unique code for new user
+            const userCode = await getUniqueCode();
+            
             // Create new user profile
             await setDoc(userRef, {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
+              userCode: userCode,
               createdAt: new Date().toISOString(),
               lastLogin: new Date().toISOString()
             });
+            
+            console.log('✅ New user created with code:', userCode);
           } else {
             // Update last login
             await setDoc(userRef, {

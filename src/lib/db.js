@@ -306,14 +306,14 @@ export async function deleteDeck(deckId) {
 // ==================== FRIEND MANAGEMENT ====================
 
 /**
- * Look up a user by email
- * @param {string} email - The user's email
+ * Look up a user by their unique 6-digit code
+ * @param {string} userCode - The user's 6-digit code
  * @returns {Promise<Object|null>} - User object with uid or null if not found
  */
-export async function getUserByEmail(email) {
+export async function getUserByCode(userCode) {
   try {
-    if (!email) {
-      throw new Error('Email is required');
+    if (!userCode) {
+      throw new Error('User code is required');
     }
     
     const usersRef = collection(db, 'users');
@@ -322,7 +322,7 @@ export async function getUserByEmail(email) {
     let foundUser = null;
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      if (data.email && data.email.toLowerCase() === email.toLowerCase()) {
+      if (data.userCode && data.userCode === userCode) {
         foundUser = {
           uid: docSnap.id,
           ...data
@@ -331,13 +331,13 @@ export async function getUserByEmail(email) {
     });
     
     if (!foundUser) {
-      throw new Error(`User with email "${email}" not found`);
+      throw new Error(`User with code "${userCode}" not found`);
     }
     
     console.log('✅ User found:', foundUser.uid);
     return foundUser;
   } catch (error) {
-    console.error('❌ Error looking up user by email:', error);
+    console.error('❌ Error looking up user by code:', error);
     throw error;
   }
 }
@@ -345,23 +345,23 @@ export async function getUserByEmail(email) {
 /**
  * Send a friend request
  * @param {string} fromUserId - The ID of the user sending the request
- * @param {string} fromUserEmail - The email of the user sending the request
- * @param {string} toUserEmail - The email of the user to add as friend
+ * @param {string} fromUserCode - The 6-digit code of the user sending the request
+ * @param {string} toUserCode - The 6-digit code of the user to add as friend
  * @returns {Promise<void>}
  */
-export async function sendFriendRequest(fromUserId, fromUserEmail, toUserEmail) {
+export async function sendFriendRequest(fromUserId, fromUserCode, toUserCode) {
   try {
     // Look up the recipient to get their UID
-    const recipientUser = await getUserByEmail(toUserEmail);
+    const recipientUser = await getUserByCode(toUserCode);
     
     const requestId = `${fromUserId}_${recipientUser.uid}_${Date.now()}`;
     const requestRef = doc(db, 'friend_requests', requestId);
     
     await setDoc(requestRef, {
       fromUserId,
-      fromUserEmail,
+      fromUserCode,
       toUserId: recipientUser.uid,
-      toUserEmail,
+      toUserCode,
       status: 'pending',
       createdAt: serverTimestamp()
     });

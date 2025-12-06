@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, ListGroup, Badge, Alert } from 'react-bootstrap';
-import { UserPlus, Users, Check, X, Mail, Bell } from 'lucide-react';
+import { UserPlus, Users, Check, X, Mail, Bell, Copy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { 
   sendFriendRequest, 
   acceptFriendRequest, 
@@ -12,7 +14,8 @@ import {
 
 function Friends() {
   const { user } = useAuth();
-  const [friendEmail, setFriendEmail] = useState('');
+  const [friendCode, setFriendCode] = useState('');
+  const [userCode, setUserCode] = useState('');
   const [friendRequests, setFriendRequests] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -21,12 +24,27 @@ function Friends() {
   const [listenerError, setListenerError] = useState(null);
 
   useEffect(() => {
-    if (!user || !user.email || !user.uid) {
+    if (!user || !user.uid) {
       console.log('⏳ Waiting for user authentication...');
       return;
     }
+    
+    // Fetch user's own code
+    const fetchUserCode = async () => {
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          setUserCode(userSnap.data().userCode);
+        }
+      } catch (error) {
+        console.error('Error fetching user code:', error);
+      }
+    };
+    
+    fetchUserCode();
 
-    console.log('📡 Setting up listeners for user:', user.email);
+    console.log('📡 Setting up listeners for user:', user.uid);
     setListenerError(null);
 
     // Set up real-time listener for friend requests
@@ -58,25 +76,25 @@ function Friends() {
       unsubscribeFriends();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email, user?.uid]);
+  }, [user?.uid]);
 
   const handleSendRequest = async (e) => {
     e.preventDefault();
-    if (!friendEmail.trim()) return;
+    if (!friendCode.trim()) return;
 
     setLoading(true);
     setMessage({ type: '', text: '' });
 
     try {
-      if (friendEmail === user.email) {
+      if (friendCode === userCode) {
         setMessage({ type: 'danger', text: 'You cannot add yourself as a friend!' });
         setLoading(false);
         return;
       }
 
-      await sendFriendRequest(user.uid, user.email, friendEmail.trim());
-      setMessage({ type: 'success', text: `Friend request sent to ${friendEmail}!` });
-      setFriendEmail('');
+      await sendFriendRequest(user.uid, userCode, friendCode.trim());
+      setMessage({ type: 'success', text: `Friend request sent!` });
+      setFriendCode('');
     } catch (error) {
       const errorMsg = error.message || 'Failed to send friend request. Try again.';
       setMessage({ type: 'danger', text: errorMsg });
@@ -139,25 +157,56 @@ function Friends() {
         <Col lg={6}>
           <Card>
             <Card.Body>
+              <h5 className="mb-3" style={{ fontSize: '0.9rem' }}>
+                <UserPlus className="me-2" size={20} />
+                Your Code
+              </h5>
+              <div className="d-flex gap-2 mb-3">
+                <Form.Control
+                  type="text"
+                  value={userCode}
+                  readOnly
+                  style={{ fontWeight: 'bold', fontSize: '1.2rem', textAlign: 'center' }}
+                />
+                <Button
+                  variant="outline-primary"
+                  onClick={() => {
+                    navigator.clipboard.writeText(userCode);
+                    setMessage({ type: 'info', text: 'Code copied!' });
+                  }}
+                  disabled={!userCode}
+                >
+                  <Copy size={18} />
+                </Button>
+              </div>
+              <p className="text-muted small mb-0">Share this code with friends to connect</p>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col lg={6}>
+          <Card>
+            <Card.Body>
               <h5 className="mb-3">
                 <UserPlus className="me-2" size={20} />
                 Add Friend
               </h5>
               <Form onSubmit={handleSendRequest}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Friend's Email</Form.Label>
+                  <Form.Label>Friend's Code</Form.Label>
                   <Form.Control
-                    type="email"
-                    placeholder="friend@example.com"
-                    value={friendEmail}
-                    onChange={(e) => setFriendEmail(e.target.value)}
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={friendCode}
+                    onChange={(e) => setFriendCode(e.target.value)}
                     disabled={loading}
+                    maxLength="6"
                   />
                 </Form.Group>
                 <Button 
                   type="submit" 
                   variant="primary" 
-                  disabled={loading || !friendEmail.trim()}
+                  disabled={loading || !friendCode.trim()}
                 >
                   <UserPlus size={18} className="me-2" />
                   Send Request
@@ -166,7 +215,9 @@ function Friends() {
             </Card.Body>
           </Card>
         </Col>
+      </Row>
 
+      <Row className="mb-4">
         <Col lg={6}>
           <Card>
             <Card.Body>
@@ -185,7 +236,7 @@ function Friends() {
                     <ListGroup.Item key={request.id} className="d-flex justify-content-between align-items-center">
                       <div>
                         <strong>Friend request</strong>
-                        <div className="small text-muted">From: {request.fromUserEmail || request.fromUserId}</div>
+                        <div className="small text-muted">From: {request.fromUserCode || 'Unknown'}</div>
                       </div>
                       <div>
                         <Button
