@@ -7,7 +7,8 @@ import {
   importSharedDeck, 
   shareDeck, 
   listenToFriends,
-  getAllDecks 
+  getAllDecks,
+  getUserInfo
 } from '../lib/db';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -18,6 +19,7 @@ function SharedDecks() {
   const [sharedDecks, setSharedDecks] = useState([]);
   const [myDecks, setMyDecks] = useState([]);
   const [friends, setFriends] = useState([]);
+  const [friendsWithDetails, setFriendsWithDetails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showShareModal, setShowShareModal] = useState(false);
@@ -64,6 +66,18 @@ function SharedDecks() {
     const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
       console.log('👥 Friends list updated:', friendsList.length);
       setFriends(friendsList);
+      
+      // Fetch details for each friend
+      Promise.all(
+        friendsList.map(async (friendId) => {
+          const friendInfo = await getUserInfo(friendId);
+          return {
+            uid: friendId,
+            email: friendInfo?.email || 'Unknown',
+            displayName: friendInfo?.displayName || 'Unknown User'
+          };
+        })
+      ).then(setFriendsWithDetails);
     });
 
     return () => {
@@ -255,9 +269,9 @@ function SharedDecks() {
                   onChange={(e) => setSelectedFriend(e.target.value)}
                 >
                   <option value="">Choose a friend...</option>
-                  {friends.map((friendId) => (
-                    <option key={friendId} value={friendId}>
-                      User: {friendId}
+                  {friendsWithDetails.map((friend) => (
+                    <option key={friend.uid} value={friend.uid}>
+                      {friend.displayName} ({friend.email})
                     </option>
                   ))}
                 </Form.Select>
