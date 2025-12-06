@@ -262,10 +262,8 @@ function Friends() {
             </Card.Body>
           </Card>
         </Col>
-      </Row>
 
-      <Row>
-        <Col>
+        <Col lg={6}>
           <Card>
             <Card.Body>
               <h5 className="mb-3">

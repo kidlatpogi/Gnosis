@@ -357,16 +357,20 @@ export async function sendFriendRequest(fromUserId, fromUserCode, toUserCode) {
     const requestId = `${fromUserId}_${recipientUser.uid}_${Date.now()}`;
     const requestRef = doc(db, 'friend_requests', requestId);
     
-    await setDoc(requestRef, {
+    const requestData = {
       fromUserId,
       fromUserCode,
       toUserId: recipientUser.uid,
       toUserCode,
       status: 'pending',
       createdAt: serverTimestamp()
-    });
+    };
     
-    console.log('✅ Friend request sent to', recipientUser.uid);
+    console.log('📤 Sending friend request:', requestData);
+    
+    await setDoc(requestRef, requestData);
+    
+    console.log('✅ Friend request sent successfully to', recipientUser.uid);
   } catch (error) {
     console.error('❌ Error sending friend request:', error);
     throw error;
