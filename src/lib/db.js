@@ -308,16 +308,18 @@ export async function deleteDeck(deckId) {
 /**
  * Send a friend request
  * @param {string} fromUserId - The ID of the user sending the request
+ * @param {string} fromUserEmail - The email of the user sending the request
  * @param {string} toUserEmail - The email of the user to add as friend
  * @returns {Promise<void>}
  */
-export async function sendFriendRequest(fromUserId, toUserEmail) {
+export async function sendFriendRequest(fromUserId, fromUserEmail, toUserEmail) {
   try {
     const requestId = `${fromUserId}_${toUserEmail}_${Date.now()}`;
     const requestRef = doc(db, 'friend_requests', requestId);
     
     await setDoc(requestRef, {
       fromUserId,
+      fromUserEmail,
       toUserEmail,
       status: 'pending',
       createdAt: serverTimestamp()

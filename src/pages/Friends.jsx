@@ -74,7 +74,7 @@ function Friends() {
         return;
       }
 
-      await sendFriendRequest(user.uid, friendEmail.trim());
+      await sendFriendRequest(user.uid, user.email, friendEmail.trim());
       setMessage({ type: 'success', text: `Friend request sent to ${friendEmail}!` });
       setFriendEmail('');
     } catch (error) {
@@ -184,7 +184,7 @@ function Friends() {
                     <ListGroup.Item key={request.id} className="d-flex justify-content-between align-items-center">
                       <div>
                         <strong>Friend request</strong>
-                        <div className="small text-muted">From: {request.fromUserId}</div>
+                        <div className="small text-muted">From: {request.fromUserEmail || request.fromUserId}</div>
                       </div>
                       <div>
                         <Button

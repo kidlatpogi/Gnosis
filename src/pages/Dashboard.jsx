@@ -30,12 +30,14 @@ const Dashboard = () => {
       
       // Load all decks using helper function
       const decksData = await getAllDecks();
-      setDecks(decksData);
+      // Filter to only show user's own decks
+      const userDecks = user ? decksData.filter(deck => deck.creatorId === user.uid) : decksData;
+      setDecks(userDecks);
 
       // Load user progress for each deck
       if (user) {
         const stats = {};
-        for (const deck of decksData) {
+        for (const deck of userDecks) {
           try {
             const progress = await getUserProgress(user.uid, deck.id);
             
