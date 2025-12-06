@@ -27,14 +27,15 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && resource.data.creatorId == request.auth.uid;
     }
     
-    // User progress collection
+    // User progress collection - Allow read for all authenticated users (needed for leaderboards)
     match /user_progress/{progressId} {
-      allow read, write: if isAuthenticated() && progressId.matches('^' + request.auth.uid + '_.*');
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && progressId.matches('^' + request.auth.uid + '_.*');
     }
     
-    // Study sessions collection
+    // Study sessions collection - Allow read for all authenticated users (needed for leaderboards)
     match /studySessions/{sessionId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
