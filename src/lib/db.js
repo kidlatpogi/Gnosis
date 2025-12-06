@@ -306,6 +306,34 @@ export async function deleteDeck(deckId) {
 // ==================== FRIEND MANAGEMENT ====================
 
 /**
+ * Get user information by ID
+ * @param {string} userId - The user's ID
+ * @returns {Promise<Object|null>} - User object with email, displayName, etc.
+ */
+export async function getUserInfo(userId) {
+  try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
+    const userRef = doc(db, 'users', userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      return null;
+    }
+    
+    return {
+      uid: userSnap.id,
+      ...userSnap.data()
+    };
+  } catch (error) {
+    console.error('❌ Error fetching user info:', error);
+    return null;
+  }
+}
+
+/**
  * Look up a user by their unique 6-digit code
  * @param {string} userCode - The user's 6-digit code
  * @returns {Promise<Object|null>} - User object with uid or null if not found

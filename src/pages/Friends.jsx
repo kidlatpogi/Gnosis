@@ -9,7 +9,8 @@ import {
   acceptFriendRequest, 
   rejectFriendRequest,
   listenToFriendRequests,
-  listenToFriends
+  listenToFriends,
+  getUserInfo
 } from '../lib/db';
 
 function Friends() {
@@ -17,7 +18,9 @@ function Friends() {
   const [friendCode, setFriendCode] = useState('');
   const [userCode, setUserCode] = useState('');
   const [friendRequests, setFriendRequests] = useState([]);
+  const [friendRequestsWithDetails, setFriendRequestsWithDetails] = useState([]);
   const [friends, setFriends] = useState([]);
+  const [friendsWithDetails, setFriendsWithDetails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [newRequestCount, setNewRequestCount] = useState(0);
@@ -67,7 +70,41 @@ function Friends() {
     const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
       console.log('👥 Friends list updated:', friendsList.length);
       setFriends(friendsList);
+      
+      // Fetch details for each friend
+      Promise.all(
+        friendsList.map(async (friendId) => {
+          const friendInfo = await getUserInfo(friendId);
+          return {
+            uid: friendId,
+            email: friendInfo?.email || 'Unknown',
+            displayName: friendInfo?.displayName || 'Unknown User'
+          };
+        })
+      ).then(setFriendsWithDetails);
     });
+
+    // Also fetch details for friend requests
+    const fetchRequestDetails = async () => {
+      const details = await Promise.all(
+        friendRequests.map(async (request) => {
+          if (!request.fromUserId) return request;
+          const userInfo = await getUserInfo(request.fromUserId);
+          return {
+            ...request,
+            fromUserEmail: userInfo?.email || 'Unknown',
+            fromUserName: userInfo?.displayName || 'Unknown User'
+          };
+        })
+      );
+      setFriendRequestsWithDetails(details);
+    };
+    
+    if (friendRequests.length > 0) {
+      fetchRequestDetails();
+    } else {
+      setFriendRequestsWithDetails([]);
+    }
 
     // Cleanup listeners on unmount
     return () => {
@@ -232,11 +269,11 @@ function Friends() {
                 <p className="text-muted mb-0">No pending friend requests</p>
               ) : (
                 <ListGroup>
-                  {friendRequests.map((request) => (
+                  {friendRequestsWithDetails.map((request) => (
                     <ListGroup.Item key={request.id} className="d-flex justify-content-between align-items-center">
                       <div>
-                        <strong>Friend request</strong>
-                        <div className="small text-muted">From: {request.fromUserCode || 'Unknown'}</div>
+                        <strong>{request.fromUserName}</strong>
+                        <div className="small text-muted">{request.fromUserEmail}</div>
                       </div>
                       <div>
                         <Button
@@ -275,11 +312,11 @@ function Friends() {
                 <p className="text-muted mb-0">No friends yet. Send a friend request to get started!</p>
               ) : (
                 <ListGroup>
-                  {friends.map((friendId) => (
-                    <ListGroup.Item key={friendId} className="d-flex justify-content-between align-items-center">
+                  {friendsWithDetails.map((friend) => (
+                    <ListGroup.Item key={friend.uid} className="d-flex justify-content-between align-items-center">
                       <div>
-                        <strong>User: {friendId}</strong>
-                        <div className="small text-muted">Connected</div>
+                        <strong>{friend.displayName}</strong>
+                        <div className="small text-muted">{friend.email}</div>
                       </div>
                       <Badge bg="success">Friend</Badge>
                     </ListGroup.Item>
