@@ -23,7 +23,10 @@ const StudyHeatmap = () => {
           if (!data[date]) {
             data[date] = 0;
           }
-          data[date] += session.duration; // duration in minutes
+          // Convert to minutes: use durationMs if available (precise), otherwise use duration in seconds
+          const durationSeconds = session.durationMs ? session.durationMs / 1000 : session.duration || 0;
+          const durationMinutes = durationSeconds / 60;
+          data[date] += durationMinutes;
         });
         
         setStudyData(data);

@@ -858,7 +858,14 @@ export async function getCardsSolvedLeaderboard(userIds) {
       if (userIds.includes(userId)) {
         const data = doc.data();
         const cards = data.cards || {};
-        userStats[userId] += Object.keys(cards).length;
+        
+        // Sum up all review counts for cards that have been reviewed
+        // If a card is reviewed 3 times, it counts as 3 solved cards
+        Object.values(cards).forEach(cardData => {
+          if (cardData.reviewCount && cardData.reviewCount > 0) {
+            userStats[userId] += cardData.reviewCount;
+          }
+        });
       }
     });
     
