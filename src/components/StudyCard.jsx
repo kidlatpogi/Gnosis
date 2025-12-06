@@ -7,8 +7,7 @@ import { playSuccessSoundIfEnabled, playErrorSoundIfEnabled } from '../utils/sou
 /**
  * StudyCard Component - Enhanced with multiple study modes, hints, and celebrations
  */
-const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards = 1, allCards = [] }) => {
-  const [studyMode, setStudyMode] = useState('flashcard');
+const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards = 1, allCards = [], studyMode, setStudyMode }) => {
   const [cardOrientation, setCardOrientation] = useState(() => Math.random() > 0.5); // Randomly show front or back first
   const [isFlipped, setIsFlipped] = useState(cardOrientation); // Start flipped if random choice says so
   const [hintShown, setHintShown] = useState(false);
@@ -23,7 +22,6 @@ const StudyCard = ({ card, onRate, cardsRemaining, currentIndex = 0, totalCards 
     // Reset other states when card changes
     setHintShown(false);
     setHintUsed(false);
-    setStudyMode('flashcard');
     setFeedback(null);
     setTypedAnswer('');
     setAutoRated(false);

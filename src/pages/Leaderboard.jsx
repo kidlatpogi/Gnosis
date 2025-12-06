@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   getFriends, 
   getStudyTimeLeaderboard, 
-  getCardsSolvedLeaderboard 
+  getCardsSolvedLeaderboard,
+  getUserInfo
 } from '../lib/db';
 
 function Leaderboard() {
@@ -13,6 +14,7 @@ function Leaderboard() {
   const [studyTimeLeaderboard, setStudyTimeLeaderboard] = useState([]);
   const [cardsSolvedLeaderboard, setCardsSolvedLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userInfoCache, setUserInfoCache] = useState({}); // Cache user info
 
   useEffect(() => {
     if (user) {
@@ -33,6 +35,19 @@ function Leaderboard() {
         getStudyTimeLeaderboard(allUserIds),
         getCardsSolvedLeaderboard(allUserIds)
       ]);
+
+      // Fetch user info for all users in leaderboards
+      const cache = {};
+      for (const userId of allUserIds) {
+        try {
+          const info = await getUserInfo(userId);
+          cache[userId] = info;
+        } catch (err) {
+          console.error(`Error fetching info for user ${userId}:`, err);
+          cache[userId] = { displayName: 'Unknown', email: '' };
+        }
+      }
+      setUserInfoCache(cache);
 
       setStudyTimeLeaderboard(studyTime);
       setCardsSolvedLeaderboard(cardsSolved);
@@ -62,6 +77,8 @@ function Leaderboard() {
   const renderLeaderboardItem = (item, index, type) => {
     const isCurrentUser = item.userId === user.uid;
     const value = type === 'time' ? formatMinutes(item.totalMinutes) : `${item.totalCards} cards`;
+    const userInfo = userInfoCache[item.userId] || { displayName: 'Unknown', email: '' };
+    const displayName = isCurrentUser ? 'You' : (userInfo.displayName || 'Unknown User');
 
     return (
       <ListGroup.Item 
@@ -73,7 +90,8 @@ function Leaderboard() {
             {getRankBadge(index)}
           </div>
           <div>
-            <strong>{isCurrentUser ? 'You' : `User: ${item.userId.substring(0, 8)}...`}</strong>
+            <strong>{displayName}</strong>
+            {userInfo.email && <div className="small text-muted">{userInfo.email}</div>}
             {isCurrentUser && <Badge bg="primary" className="ms-2">You</Badge>}
           </div>
         </div>

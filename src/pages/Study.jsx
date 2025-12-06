@@ -22,6 +22,7 @@ const Study = () => {
   const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
   const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [studyMode, setStudyMode] = useState('flashcard'); // Moved from StudyCard for persistence
 
   useEffect(() => {
     const loadData = async () => {
@@ -275,12 +276,15 @@ const Study = () => {
           <div style={{ width: '100%', maxWidth: '100%' }}>
             {currentCardIndex < dueCards.length && (
               <StudyCard
+                key={dueCards[currentCardIndex]?.id}
                 card={dueCards[currentCardIndex]}
                 onRate={handleRateCard}
                 cardsRemaining={dueCards.length - currentCardIndex}
                 currentIndex={currentCardIndex}
                 totalCards={dueCards.length}
                 allCards={dueCards}
+                studyMode={studyMode}
+                setStudyMode={setStudyMode}
               />
             )}
           </div>
