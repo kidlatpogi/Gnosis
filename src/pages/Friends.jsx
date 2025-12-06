@@ -154,7 +154,7 @@ function Friends() {
       )}
 
       <Row className="mb-4">
-        <Col lg={6}>
+        <Col xs={12} lg={6} className="mb-3 mb-lg-0">
           <Card style={{ minHeight: '220px' }}>
             <Card.Body>
               <h5 className="mb-3" style={{ fontSize: '0.9rem' }}>
@@ -184,7 +184,7 @@ function Friends() {
           </Card>
         </Col>
 
-        <Col lg={6}>
+        <Col xs={12} lg={6}>
           <Card style={{ minHeight: '220px' }}>
             <Card.Body>
               <h5 className="mb-3">
@@ -218,7 +218,7 @@ function Friends() {
       </Row>
 
       <Row className="mb-4">
-        <Col lg={6}>
+        <Col xs={12} lg={6} className="mb-3 mb-lg-0">
           <Card style={{ minHeight: '200px' }}>
             <Card.Body>
               <h5 className="mb-3">
@@ -263,7 +263,7 @@ function Friends() {
           </Card>
         </Col>
 
-        <Col lg={6}>
+        <Col xs={12} lg={6}>
           <Card style={{ minHeight: '200px' }}>
             <Card.Body>
               <h5 className="mb-3">
