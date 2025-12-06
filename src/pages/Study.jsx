@@ -62,7 +62,10 @@ const Study = () => {
 
         // If no cards are due but deck has cards, load all cards for review
         const finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
-        setDueCards(finalCards);
+        
+        // Shuffle cards for randomization
+        const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
+        setDueCards(shuffledCards);
         
         // Start tracking study time if there are cards
         if (finalCards.length > 0) {
@@ -80,6 +83,43 @@ const Study = () => {
       loadData();
     }
   }, [deckId, user]);
+
+  // Save study session when user leaves the page
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (sessionStartTime && user && deck) {
+        const durationMs = Date.now() - sessionStartTime;
+        if (durationMs >= 1000) { // Only save if at least 1 second
+          // Use a synchronous approach for beforeunload
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const today = `${year}-${month}-${day}`;
+          
+          try {
+            // This will be a synchronous save attempt - Firebase may not complete it
+            // So we also save on component unmount
+            await addDoc(collection(db, 'studySessions'), {
+              userId: user.uid,
+              deckId: deckId,
+              deckTitle: deck.title || 'Unknown Deck',
+              date: today,
+              duration: durationMs / 1000,
+              durationMs: durationMs,
+              cardsStudied: currentCardIndex,
+              timestamp: new Date().toISOString()
+            });
+          } catch (err) {
+            console.error('Error saving session on page unload:', err);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [sessionStartTime, user, deck, deckId, currentCardIndex]);
 
   const handleRateCard = async (quality, hintUsed) => {
     try {
@@ -142,8 +182,8 @@ const Study = () => {
     }
   };
 
-  const saveStudySession = async (duration) => {
-    if (!user || duration < 1 || !deck) return; // Don't save sessions less than 1 minute
+  const saveStudySession = async (durationMs) => {
+    if (!user || durationMs < 1000 || !deck) return; // Don't save sessions less than 1 second
     
     try {
       // Format date as YYYY-MM-DD using local browser date
@@ -154,13 +194,15 @@ const Study = () => {
       const today = `${year}-${month}-${day}`;
       
       const studySessionsRef = collection(db, 'studySessions');
+      const durationSeconds = durationMs / 1000; // Convert ms to seconds
       
       await addDoc(studySessionsRef, {
         userId: user.uid,
         deckId: deckId,
         deckTitle: deck.title || 'Unknown Deck',
         date: today,
-        duration: duration, // in minutes
+        duration: durationSeconds, // Store in seconds with precision
+        durationMs: durationMs, // Also store raw milliseconds
         cardsStudied: currentCardIndex,
         timestamp: new Date().toISOString()
       });
@@ -172,7 +214,9 @@ const Study = () => {
   const handleStartNextRound = () => {
     if (cardsToRetry.length > 0) {
       // Start a new round with cards that were marked 'Again'
-      setDueCards(cardsToRetry);
+      // Shuffle cards for randomization
+      const shuffledRetry = [...cardsToRetry].sort(() => Math.random() - 0.5);
+      setDueCards(shuffledRetry);
       setCardsToRetry([]);
       setCurrentCardIndex(0);
       setCurrentRound(currentRound + 1);
@@ -182,10 +226,10 @@ const Study = () => {
   };
 
   const handleBackToDashboard = async () => {
-    // Calculate and save study duration
+    // Calculate and save study duration with full precision
     if (sessionStartTime) {
-      const duration = Math.floor((Date.now() - sessionStartTime) / 60000); // Convert to minutes
-      await saveStudySession(duration);
+      const durationMs = Date.now() - sessionStartTime; // Keep in milliseconds
+      await saveStudySession(durationMs);
     }
     navigate('/dashboard');
   };
@@ -205,7 +249,9 @@ const Study = () => {
         
         // Load all cards from the deck for review again
         if (deckData.cards && deckData.cards.length > 0) {
-          setDueCards(deckData.cards);
+          // Shuffle cards for randomization
+          const shuffledCards = [...deckData.cards].sort(() => Math.random() - 0.5);
+          setDueCards(shuffledCards);
           // Restart timer for new session
           setSessionStartTime(Date.now());
         } else {

@@ -66,12 +66,23 @@ function Leaderboard() {
   };
 
   const formatMinutes = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
+    if (minutes < 1) {
+      // Less than 1 minute - show seconds
+      const seconds = Math.round(minutes * 60);
+      return `${seconds}s`;
     }
-    return `${mins}m`;
+    
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    const secs = Math.round((minutes % 1) * 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${mins}m ${secs}s`;
+    }
+    if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    }
+    return `${secs}s`;
   };
 
   const renderLeaderboardItem = (item, index, type) => {

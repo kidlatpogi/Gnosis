@@ -815,13 +815,18 @@ export async function getStudyTimeLeaderboard(userIds) {
     querySnapshot.forEach((doc) => {
       const data = doc.data();
       if (userIds.includes(data.userId)) {
-        userStats[data.userId] += data.duration || 0;
+        // Use durationMs if available (precise), fallback to duration in seconds
+        const sessionTime = data.durationMs || (data.duration * 1000) || 0;
+        userStats[data.userId] += sessionTime; // Accumulate in milliseconds
       }
     });
     
-    // Convert to array and sort
+    // Convert to array with minutes, sort by most time
     const leaderboard = Object.entries(userStats)
-      .map(([userId, totalMinutes]) => ({ userId, totalMinutes }))
+      .map(([userId, totalMs]) => ({ 
+        userId, 
+        totalMinutes: Math.round(totalMs / 60000 * 100) / 100 // Convert ms to minutes with 2 decimal precision
+      }))
       .sort((a, b) => b.totalMinutes - a.totalMinutes);
     
     return leaderboard;

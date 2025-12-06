@@ -115,6 +115,31 @@ function Friends() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
+  // Separate useEffect to fetch friend request details when requests array changes
+  useEffect(() => {
+    if (friendRequests.length === 0) {
+      setFriendRequestsWithDetails([]);
+      return;
+    }
+
+    const fetchRequestDetails = async () => {
+      const details = await Promise.all(
+        friendRequests.map(async (request) => {
+          if (!request.fromUserId) return request;
+          const userInfo = await getUserInfo(request.fromUserId);
+          return {
+            ...request,
+            fromUserEmail: userInfo?.email || 'Unknown',
+            fromUserName: userInfo?.displayName || 'Unknown User'
+          };
+        })
+      );
+      setFriendRequestsWithDetails(details);
+    };
+
+    fetchRequestDetails();
+  }, [friendRequests]);
+
   const handleSendRequest = async (e) => {
     e.preventDefault();
     if (!friendCode.trim()) return;
