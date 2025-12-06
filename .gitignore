@@ -27,3 +27,18 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Sensitive configuration and documentation
+FIRESTORE_RULES.txt
+ISSUES.md
+SOCIAL_FEATURES.md
+IMPLEMENTATION_COMPLETE.md
+PHASE2_COMPLETE.md
+PROJECT_COMPLETE.md
+FIREBASE_SETUP.md
+SETUP_GUIDE.md
+
+# Local development files
+*.backup
+*.tmp
+
