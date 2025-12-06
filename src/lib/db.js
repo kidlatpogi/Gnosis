@@ -529,26 +529,38 @@ export function listenToFriendRequests(userId, callback) {
     return () => {}; // Return empty unsubscribe function
   }
   
+  console.log('🔄 Setting up friend requests listener for user:', userId);
+  
   try {
     // Use simple collection query and filter client-side to avoid composite index
     const requestsRef = collection(db, 'friend_requests');
     
     const unsubscribe = onSnapshot(requestsRef, (snapshot) => {
+      console.log('📬 Friend requests snapshot received, total docs:', snapshot.size);
       const requests = [];
+      const allRequests = [];
+      
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        // Filter client-side for this user's pending requests (check both toUserId and toUserEmail)
-        if ((data.toUserId === userId || data.toUserEmail === userId) && data.status === 'pending') {
+        allRequests.push({ id: docSnap.id, ...data });
+        
+        // Filter client-side for this user's pending requests
+        if (data.toUserId === userId && data.status === 'pending') {
+          console.log('✅ Matching request found:', { id: docSnap.id, from: data.fromUserCode, to: data.toUserCode });
           requests.push({
             id: docSnap.id,
             ...data
           });
         }
       });
-      console.log(`📨 Found ${requests.length} pending friend requests`);
+      
+      console.log('📊 All requests:', allRequests);
+      console.log(`📨 Found ${requests.length} pending friend requests for user ${userId}`);
       callback(requests);
     }, (error) => {
       console.error('❌ Error listening to friend requests:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       callback([]);
     });
     

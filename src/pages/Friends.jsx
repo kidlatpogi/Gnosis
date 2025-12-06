@@ -155,7 +155,7 @@ function Friends() {
 
       <Row className="mb-4">
         <Col lg={6}>
-          <Card>
+          <Card style={{ minHeight: '220px' }}>
             <Card.Body>
               <h5 className="mb-3" style={{ fontSize: '0.9rem' }}>
                 <UserPlus className="me-2" size={20} />
@@ -185,7 +185,7 @@ function Friends() {
         </Col>
 
         <Col lg={6}>
-          <Card>
+          <Card style={{ minHeight: '220px' }}>
             <Card.Body>
               <h5 className="mb-3">
                 <UserPlus className="me-2" size={20} />
@@ -219,7 +219,7 @@ function Friends() {
 
       <Row className="mb-4">
         <Col lg={6}>
-          <Card>
+          <Card style={{ minHeight: '200px' }}>
             <Card.Body>
               <h5 className="mb-3">
                 <Mail className="me-2" size={20} />
@@ -264,7 +264,7 @@ function Friends() {
         </Col>
 
         <Col lg={6}>
-          <Card>
+          <Card style={{ minHeight: '200px' }}>
             <Card.Body>
               <h5 className="mb-3">
                 <Users className="me-2" size={20} />
