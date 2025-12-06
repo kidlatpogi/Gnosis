@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, ListGroup, Badge, Alert, Modal, Form } from 'react-bootstrap';
-import { Share2, Download, Gift } from 'lucide-react';
+import { Share2, Download, Gift, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  getSharedDecks, 
+  listenToSharedDecks,
   importSharedDeck, 
   shareDeck, 
-  getFriends,
+  listenToFriends,
   getAllDecks 
 } from '../lib/db';
 import { useNavigate } from 'react-router-dom';
@@ -24,22 +24,36 @@ function SharedDecks() {
   const [selectedFriend, setSelectedFriend] = useState('');
 
   useEffect(() => {
-    if (user) {
-      loadSharedDecks();
-      loadMyDecks();
-      loadFriends();
-    }
+    if (!user) return;
+
+    // Real-time listener for shared decks
+    const unsubscribeShared = listenToSharedDecks(user.uid, (decks) => {
+      const previousCount = sharedDecks.length;
+      setSharedDecks(decks);
+      
+      // Show notification for new shared decks
+      if (decks.length > previousCount && previousCount > 0) {
+        setMessage({ 
+          type: 'info', 
+          text: `You have ${decks.length - previousCount} new deck${decks.length - previousCount > 1 ? 's' : ''} shared with you!` 
+        });
+      }
+    });
+
+    // Real-time listener for friends
+    const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
+      setFriends(friendsList);
+    });
+
+    // Load user's own decks
+    loadMyDecks();
+
+    return () => {
+      unsubscribeShared();
+      unsubscribeFriends();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  const loadSharedDecks = async () => {
-    try {
-      const decks = await getSharedDecks(user.uid);
-      setSharedDecks(decks);
-    } catch (error) {
-      console.error('Error loading shared decks:', error);
-    }
-  };
 
   const loadMyDecks = async () => {
     try {
@@ -52,21 +66,11 @@ function SharedDecks() {
     }
   };
 
-  const loadFriends = async () => {
-    try {
-      const friendIds = await getFriends(user.uid);
-      setFriends(friendIds);
-    } catch (error) {
-      console.error('Error loading friends:', error);
-    }
-  };
-
   const handleImport = async (shareId, deck) => {
     setLoading(true);
     try {
       await importSharedDeck(shareId, user.uid, deck);
       setMessage({ type: 'success', text: `Deck "${deck.title}" imported successfully!` });
-      loadSharedDecks();
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (error) {
       setMessage({ type: 'danger', text: 'Failed to import deck. Try again.' });

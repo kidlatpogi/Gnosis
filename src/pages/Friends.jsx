@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, ListGroup, Badge, Alert } from 'react-bootstrap';
-import { UserPlus, Users, Check, X, Mail } from 'lucide-react';
+import { UserPlus, Users, Check, X, Mail, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   sendFriendRequest, 
-  getFriendRequests, 
   acceptFriendRequest, 
   rejectFriendRequest,
-  getFriends 
+  listenToFriendRequests,
+  listenToFriends
 } from '../lib/db';
 
 function Friends() {
@@ -17,30 +17,36 @@ function Friends() {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-
-  const loadFriendRequests = async () => {
-    try {
-      const requests = await getFriendRequests(user.email);
-      setFriendRequests(requests);
-    } catch (error) {
-      console.error('Error loading friend requests:', error);
-    }
-  };
-
-  const loadFriends = async () => {
-    try {
-      const friendIds = await getFriends(user.uid);
-      setFriends(friendIds);
-    } catch (error) {
-      console.error('Error loading friends:', error);
-    }
-  };
+  const [newRequestCount, setNewRequestCount] = useState(0);
 
   useEffect(() => {
-    if (user) {
-      loadFriendRequests();
-      loadFriends();
-    }
+    if (!user) return;
+
+    // Set up real-time listener for friend requests
+    const unsubscribeRequests = listenToFriendRequests(user.email, (requests) => {
+      const previousCount = friendRequests.length;
+      setFriendRequests(requests);
+      
+      // Show notification for new requests
+      if (requests.length > previousCount && previousCount > 0) {
+        setNewRequestCount(requests.length - previousCount);
+        setMessage({ 
+          type: 'info', 
+          text: `You have ${requests.length - previousCount} new friend request${requests.length - previousCount > 1 ? 's' : ''}!` 
+        });
+      }
+    });
+
+    // Set up real-time listener for friends list
+    const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
+      setFriends(friendsList);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubscribeRequests();
+      unsubscribeFriends();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -73,8 +79,7 @@ function Friends() {
     try {
       await acceptFriendRequest(requestId, user.uid, friendId);
       setMessage({ type: 'success', text: 'Friend request accepted!' });
-      loadFriendRequests();
-      loadFriends();
+      setNewRequestCount(0);
     } catch (error) {
       setMessage({ type: 'danger', text: 'Failed to accept request.' });
       console.error('Error accepting friend request:', error);
@@ -85,7 +90,7 @@ function Friends() {
     try {
       await rejectFriendRequest(requestId);
       setMessage({ type: 'info', text: 'Friend request rejected.' });
-      loadFriendRequests();
+      setNewRequestCount(0);
     } catch (error) {
       setMessage({ type: 'danger', text: 'Failed to reject request.' });
       console.error('Error rejecting friend request:', error);

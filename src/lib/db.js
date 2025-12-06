@@ -10,6 +10,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
+  where,
+  onSnapshot,
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -416,19 +418,80 @@ export async function rejectFriendRequest(requestId) {
 export async function getFriends(userId) {
   try {
     const friendsRef = collection(db, 'friends');
-    const querySnapshot = await getDocs(friendsRef);
+    const q = query(friendsRef, where('userId', '==', userId));
+    const querySnapshot = await getDocs(q);
     
     const friends = [];
     querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      if (data.userId === userId) {
-        friends.push(data.friendId);
-      }
+      friends.push(doc.data().friendId);
     });
     
     return friends;
   } catch (error) {
     console.error('❌ Error fetching friends:', error);
+    throw error;
+  }
+}
+
+/**
+ * Listen to friend requests in real-time
+ * @param {string} userEmail - The email of the user
+ * @param {Function} callback - Callback function with friend requests array
+ * @returns {Function} - Unsubscribe function
+ */
+export function listenToFriendRequests(userEmail, callback) {
+  try {
+    const requestsRef = collection(db, 'friend_requests');
+    const q = query(
+      requestsRef,
+      where('toUserEmail', '==', userEmail),
+      where('status', '==', 'pending')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const requests = [];
+      snapshot.forEach((doc) => {
+        requests.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      callback(requests);
+    }, (error) => {
+      console.error('❌ Error listening to friend requests:', error);
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Error setting up friend requests listener:', error);
+    throw error;
+  }
+}
+
+/**
+ * Listen to friends list in real-time
+ * @param {string} userId - The user ID
+ * @param {Function} callback - Callback function with friends array
+ * @returns {Function} - Unsubscribe function
+ */
+export function listenToFriends(userId, callback) {
+  try {
+    const friendsRef = collection(db, 'friends');
+    const q = query(friendsRef, where('userId', '==', userId));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const friends = [];
+      snapshot.forEach((doc) => {
+        friends.push(doc.data().friendId);
+      });
+      callback(friends);
+    }, (error) => {
+      console.error('❌ Error listening to friends:', error);
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Error setting up friends listener:', error);
     throw error;
   }
 }
@@ -525,6 +588,58 @@ export async function importSharedDeck(shareId, userId, deckData) {
     return newDeckId;
   } catch (error) {
     console.error('❌ Error importing deck:', error);
+    throw error;
+  }
+}
+
+/**
+ * Listen to shared decks in real-time
+ * @param {string} userId - The user ID
+ * @param {Function} callback - Callback function with shared decks array
+ * @returns {Function} - Unsubscribe function
+ */
+export function listenToSharedDecks(userId, callback) {
+  try {
+    const sharesRef = collection(db, 'shared_decks');
+    const q = query(
+      sharesRef,
+      where('toUserId', '==', userId),
+      where('imported', '==', false)
+    );
+    
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const shares = [];
+      snapshot.forEach((doc) => {
+        shares.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Fetch deck details for each share
+      const sharedDecks = await Promise.all(
+        shares.map(async (share) => {
+          try {
+            const deck = await getDeck(share.deckId);
+            return {
+              ...share,
+              deck
+            };
+          } catch (error) {
+            console.error(`Error fetching deck ${share.deckId}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      callback(sharedDecks.filter(Boolean));
+    }, (error) => {
+      console.error('❌ Error listening to shared decks:', error);
+    });
+    
+    return unsubscribe;
+  } catch (error) {
+    console.error('❌ Error setting up shared decks listener:', error);
     throw error;
   }
 }
