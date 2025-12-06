@@ -30,7 +30,7 @@ function Friends() {
     setListenerError(null);
 
     // Set up real-time listener for friend requests
-    const unsubscribeRequests = listenToFriendRequests(user.email, (requests) => {
+    const unsubscribeRequests = listenToFriendRequests(user.uid, (requests) => {
       console.log('📨 Friend requests updated:', requests.length);
       const previousCount = friendRequests.length;
       setFriendRequests(requests);

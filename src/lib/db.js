@@ -306,6 +306,43 @@ export async function deleteDeck(deckId) {
 // ==================== FRIEND MANAGEMENT ====================
 
 /**
+ * Look up a user by email
+ * @param {string} email - The user's email
+ * @returns {Promise<Object|null>} - User object with uid or null if not found
+ */
+export async function getUserByEmail(email) {
+  try {
+    if (!email) {
+      throw new Error('Email is required');
+    }
+    
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    
+    let foundUser = null;
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.email && data.email.toLowerCase() === email.toLowerCase()) {
+        foundUser = {
+          uid: docSnap.id,
+          ...data
+        };
+      }
+    });
+    
+    if (!foundUser) {
+      throw new Error(`User with email "${email}" not found`);
+    }
+    
+    console.log('✅ User found:', foundUser.uid);
+    return foundUser;
+  } catch (error) {
+    console.error('❌ Error looking up user by email:', error);
+    throw error;
+  }
+}
+
+/**
  * Send a friend request
  * @param {string} fromUserId - The ID of the user sending the request
  * @param {string} fromUserEmail - The email of the user sending the request
@@ -314,18 +351,22 @@ export async function deleteDeck(deckId) {
  */
 export async function sendFriendRequest(fromUserId, fromUserEmail, toUserEmail) {
   try {
-    const requestId = `${fromUserId}_${toUserEmail}_${Date.now()}`;
+    // Look up the recipient to get their UID
+    const recipientUser = await getUserByEmail(toUserEmail);
+    
+    const requestId = `${fromUserId}_${recipientUser.uid}_${Date.now()}`;
     const requestRef = doc(db, 'friend_requests', requestId);
     
     await setDoc(requestRef, {
       fromUserId,
       fromUserEmail,
+      toUserId: recipientUser.uid,
       toUserEmail,
       status: 'pending',
       createdAt: serverTimestamp()
     });
     
-    console.log('✅ Friend request sent');
+    console.log('✅ Friend request sent to', recipientUser.uid);
   } catch (error) {
     console.error('❌ Error sending friend request:', error);
     throw error;
@@ -473,13 +514,13 @@ export async function getFriends(userId) {
 
 /**
  * Listen to friend requests in real-time
- * @param {string} userEmail - The email of the user
+ * @param {string} userId - The UID of the user
  * @param {Function} callback - Callback function with friend requests array
  * @returns {Function} - Unsubscribe function
  */
-export function listenToFriendRequests(userEmail, callback) {
+export function listenToFriendRequests(userId, callback) {
   // Validate parameters
-  if (!userEmail || !callback) {
+  if (!userId || !callback) {
     console.error('❌ listenToFriendRequests: Missing required parameters');
     return () => {}; // Return empty unsubscribe function
   }
@@ -492,8 +533,8 @@ export function listenToFriendRequests(userEmail, callback) {
       const requests = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        // Filter client-side for this user's pending requests
-        if (data.toUserEmail === userEmail && data.status === 'pending') {
+        // Filter client-side for this user's pending requests (check both toUserId and toUserEmail)
+        if ((data.toUserId === userId || data.toUserEmail === userId) && data.status === 'pending') {
           requests.push({
             id: docSnap.id,
             ...data
