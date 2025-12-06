@@ -467,6 +467,12 @@ export async function getFriends(userId) {
  * @returns {Function} - Unsubscribe function
  */
 export function listenToFriendRequests(userEmail, callback) {
+  // Validate parameters
+  if (!userEmail || !callback) {
+    console.error('❌ listenToFriendRequests: Missing required parameters');
+    return () => {}; // Return empty unsubscribe function
+  }
+  
   try {
     const requestsRef = collection(db, 'friend_requests');
     const q = query(
@@ -486,6 +492,8 @@ export function listenToFriendRequests(userEmail, callback) {
       callback(requests);
     }, (error) => {
       console.error('❌ Error listening to friend requests:', error);
+      // Still call callback with empty array on error
+      callback([]);
     });
     
     return unsubscribe;
@@ -502,6 +510,12 @@ export function listenToFriendRequests(userEmail, callback) {
  * @returns {Function} - Unsubscribe function
  */
 export function listenToFriends(userId, callback) {
+  // Validate parameters
+  if (!userId || !callback) {
+    console.error('❌ listenToFriends: Missing required parameters');
+    return () => {}; // Return empty unsubscribe function
+  }
+  
   try {
     const friendsRef = collection(db, 'friends');
     const q = query(friendsRef, where('userId', '==', userId));
@@ -509,11 +523,16 @@ export function listenToFriends(userId, callback) {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const friends = [];
       snapshot.forEach((doc) => {
-        friends.push(doc.data().friendId);
+        const data = doc.data();
+        if (data.friendId) {
+          friends.push(data.friendId);
+        }
       });
       callback(friends);
     }, (error) => {
       console.error('❌ Error listening to friends:', error);
+      // Still call callback with empty array on error
+      callback([]);
     });
     
     return unsubscribe;

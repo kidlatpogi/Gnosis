@@ -18,12 +18,20 @@ function Friends() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [newRequestCount, setNewRequestCount] = useState(0);
+  const [listenerError, setListenerError] = useState(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !user.email || !user.uid) {
+      console.log('⏳ Waiting for user authentication...');
+      return;
+    }
+
+    console.log('📡 Setting up listeners for user:', user.email);
+    setListenerError(null);
 
     // Set up real-time listener for friend requests
     const unsubscribeRequests = listenToFriendRequests(user.email, (requests) => {
+      console.log('📨 Friend requests updated:', requests.length);
       const previousCount = friendRequests.length;
       setFriendRequests(requests);
       
@@ -39,16 +47,18 @@ function Friends() {
 
     // Set up real-time listener for friends list
     const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
+      console.log('👥 Friends list updated:', friendsList.length);
       setFriends(friendsList);
     });
 
     // Cleanup listeners on unmount
     return () => {
+      console.log('🔌 Cleaning up listeners');
       unsubscribeRequests();
       unsubscribeFriends();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.email, user?.uid]);
 
   const handleSendRequest = async (e) => {
     e.preventDefault();
