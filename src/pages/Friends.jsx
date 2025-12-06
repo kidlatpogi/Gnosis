@@ -78,7 +78,8 @@ function Friends() {
       setMessage({ type: 'success', text: `Friend request sent to ${friendEmail}!` });
       setFriendEmail('');
     } catch (error) {
-      setMessage({ type: 'danger', text: 'Failed to send friend request. Try again.' });
+      const errorMsg = error.message || 'Failed to send friend request. Try again.';
+      setMessage({ type: 'danger', text: errorMsg });
       console.error('Error sending friend request:', error);
     } finally {
       setLoading(false);
