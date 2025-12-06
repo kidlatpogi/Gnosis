@@ -1,5 +1,5 @@
 import { Container, Button, Row, Col, Card } from 'react-bootstrap';
-import { Brain, Zap, Target, TrendingUp, BookOpen, Heart, Volume2, Shuffle, Repeat2, Lightbulb } from 'lucide-react';
+import { Brain, Zap, Target, TrendingUp, BookOpen, Heart, Volume2, Shuffle, Repeat2, Lightbulb, Users, Share2, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
@@ -169,6 +169,48 @@ const Landing = () => {
                   <h4 className="fw-bold mb-3">Instant Mastery Feedback</h4>
                   <p className="text-muted">
                     Simple Correct/Incorrect rating system. No overthinking—focus on learning what matters most.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-primary">
+                    <Users size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Friends & Collaboration</h4>
+                  <p className="text-muted">
+                    Connect with friends, share your study decks, and learn together. Build your learning community!
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-warning">
+                    <Share2 size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Share Decks</h4>
+                  <p className="text-muted">
+                    Share your carefully crafted study decks with friends. Import decks shared with you instantly!
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            <Col md={6} lg={4}>
+              <Card className="h-100 border-0 shadow-sm">
+                <Card.Body className="p-4 text-center">
+                  <div className="mb-3 text-success">
+                    <Trophy size={48} />
+                  </div>
+                  <h4 className="fw-bold mb-3">Leaderboards</h4>
+                  <p className="text-muted">
+                    Compete with friends on study time and cards solved. Friendly competition drives motivation!
                   </p>
                 </Card.Body>
               </Card>

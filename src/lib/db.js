@@ -300,3 +300,305 @@ export async function deleteDeck(deckId) {
     throw error;
   }
 }
+
+// ==================== FRIEND MANAGEMENT ====================
+
+/**
+ * Send a friend request
+ * @param {string} fromUserId - The ID of the user sending the request
+ * @param {string} toUserEmail - The email of the user to add as friend
+ * @returns {Promise<void>}
+ */
+export async function sendFriendRequest(fromUserId, toUserEmail) {
+  try {
+    const requestId = `${fromUserId}_${toUserEmail}_${Date.now()}`;
+    const requestRef = doc(db, 'friend_requests', requestId);
+    
+    await setDoc(requestRef, {
+      fromUserId,
+      toUserEmail,
+      status: 'pending',
+      createdAt: serverTimestamp()
+    });
+    
+    console.log('✅ Friend request sent');
+  } catch (error) {
+    console.error('❌ Error sending friend request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get pending friend requests for a user
+ * @param {string} userEmail - The email of the user
+ * @returns {Promise<Array>} - Array of friend request objects
+ */
+export async function getFriendRequests(userEmail) {
+  try {
+    const requestsRef = collection(db, 'friend_requests');
+    const querySnapshot = await getDocs(requestsRef);
+    
+    const requests = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.toUserEmail === userEmail && data.status === 'pending') {
+        requests.push({
+          id: doc.id,
+          ...data
+        });
+      }
+    });
+    
+    return requests;
+  } catch (error) {
+    console.error('❌ Error fetching friend requests:', error);
+    throw error;
+  }
+}
+
+/**
+ * Accept a friend request
+ * @param {string} requestId - The friend request ID
+ * @param {string} userId - The ID of the user accepting
+ * @param {string} friendId - The ID of the friend
+ * @returns {Promise<void>}
+ */
+export async function acceptFriendRequest(requestId, userId, friendId) {
+  try {
+    // Update request status
+    const requestRef = doc(db, 'friend_requests', requestId);
+    await updateDoc(requestRef, { status: 'accepted' });
+    
+    // Create friendship documents (bidirectional)
+    const friendship1Id = `${userId}_${friendId}`;
+    const friendship2Id = `${friendId}_${userId}`;
+    
+    await setDoc(doc(db, 'friends', friendship1Id), {
+      userId,
+      friendId,
+      createdAt: serverTimestamp()
+    });
+    
+    await setDoc(doc(db, 'friends', friendship2Id), {
+      userId: friendId,
+      friendId: userId,
+      createdAt: serverTimestamp()
+    });
+    
+    console.log('✅ Friend request accepted');
+  } catch (error) {
+    console.error('❌ Error accepting friend request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Reject a friend request
+ * @param {string} requestId - The friend request ID
+ * @returns {Promise<void>}
+ */
+export async function rejectFriendRequest(requestId) {
+  try {
+    const requestRef = doc(db, 'friend_requests', requestId);
+    await updateDoc(requestRef, { status: 'rejected' });
+    console.log('✅ Friend request rejected');
+  } catch (error) {
+    console.error('❌ Error rejecting friend request:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get all friends for a user
+ * @param {string} userId - The user ID
+ * @returns {Promise<Array>} - Array of friend user IDs
+ */
+export async function getFriends(userId) {
+  try {
+    const friendsRef = collection(db, 'friends');
+    const querySnapshot = await getDocs(friendsRef);
+    
+    const friends = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.userId === userId) {
+        friends.push(data.friendId);
+      }
+    });
+    
+    return friends;
+  } catch (error) {
+    console.error('❌ Error fetching friends:', error);
+    throw error;
+  }
+}
+
+// ==================== DECK SHARING ====================
+
+/**
+ * Share a deck with a friend
+ * @param {string} deckId - The deck ID to share
+ * @param {string} fromUserId - The ID of the user sharing
+ * @param {string} toUserId - The ID of the friend receiving
+ * @returns {Promise<void>}
+ */
+export async function shareDeck(deckId, fromUserId, toUserId) {
+  try {
+    const shareId = `${deckId}_${fromUserId}_${toUserId}_${Date.now()}`;
+    const shareRef = doc(db, 'shared_decks', shareId);
+    
+    await setDoc(shareRef, {
+      deckId,
+      fromUserId,
+      toUserId,
+      sharedAt: serverTimestamp(),
+      imported: false
+    });
+    
+    console.log('✅ Deck shared successfully');
+  } catch (error) {
+    console.error('❌ Error sharing deck:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get decks shared with a user
+ * @param {string} userId - The user ID
+ * @returns {Promise<Array>} - Array of shared deck objects
+ */
+export async function getSharedDecks(userId) {
+  try {
+    const sharesRef = collection(db, 'shared_decks');
+    const querySnapshot = await getDocs(sharesRef);
+    
+    const shares = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.toUserId === userId && !data.imported) {
+        shares.push({
+          id: doc.id,
+          ...data
+        });
+      }
+    });
+    
+    // Fetch deck details for each share
+    const sharedDecks = await Promise.all(
+      shares.map(async (share) => {
+        const deck = await getDeck(share.deckId);
+        return {
+          ...share,
+          deck
+        };
+      })
+    );
+    
+    return sharedDecks;
+  } catch (error) {
+    console.error('❌ Error fetching shared decks:', error);
+    throw error;
+  }
+}
+
+/**
+ * Import a shared deck to user's library
+ * @param {string} shareId - The share ID
+ * @param {string} userId - The user ID importing
+ * @param {Object} deckData - The deck data to import
+ * @returns {Promise<string>} - The new deck ID
+ */
+export async function importSharedDeck(shareId, userId, deckData) {
+  try {
+    // Create a copy of the deck for the user
+    const newDeckId = await createDeck(userId, {
+      title: deckData.title + ' (Shared)',
+      subject: deckData.subject,
+      cards: deckData.cards
+    });
+    
+    // Mark the share as imported
+    const shareRef = doc(db, 'shared_decks', shareId);
+    await updateDoc(shareRef, { imported: true });
+    
+    console.log('✅ Deck imported successfully');
+    return newDeckId;
+  } catch (error) {
+    console.error('❌ Error importing deck:', error);
+    throw error;
+  }
+}
+
+// ==================== LEADERBOARD ====================
+
+/**
+ * Get leaderboard data for study time among friends
+ * @param {Array<string>} userIds - Array of user IDs to include (user + friends)
+ * @returns {Promise<Array>} - Sorted array of {userId, totalMinutes}
+ */
+export async function getStudyTimeLeaderboard(userIds) {
+  try {
+    const sessionsRef = collection(db, 'studySessions');
+    const querySnapshot = await getDocs(sessionsRef);
+    
+    const userStats = {};
+    userIds.forEach(id => {
+      userStats[id] = 0;
+    });
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (userIds.includes(data.userId)) {
+        userStats[data.userId] += data.duration || 0;
+      }
+    });
+    
+    // Convert to array and sort
+    const leaderboard = Object.entries(userStats)
+      .map(([userId, totalMinutes]) => ({ userId, totalMinutes }))
+      .sort((a, b) => b.totalMinutes - a.totalMinutes);
+    
+    return leaderboard;
+  } catch (error) {
+    console.error('❌ Error fetching study time leaderboard:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get leaderboard data for cards solved among friends
+ * @param {Array<string>} userIds - Array of user IDs to include (user + friends)
+ * @returns {Promise<Array>} - Sorted array of {userId, totalCards}
+ */
+export async function getCardsSolvedLeaderboard(userIds) {
+  try {
+    const progressRef = collection(db, 'user_progress');
+    const querySnapshot = await getDocs(progressRef);
+    
+    const userStats = {};
+    userIds.forEach(id => {
+      userStats[id] = 0;
+    });
+    
+    querySnapshot.forEach((doc) => {
+      const progressId = doc.id;
+      const userId = progressId.split('_')[0];
+      
+      if (userIds.includes(userId)) {
+        const data = doc.data();
+        const cards = data.cards || {};
+        userStats[userId] += Object.keys(cards).length;
+      }
+    });
+    
+    // Convert to array and sort
+    const leaderboard = Object.entries(userStats)
+      .map(([userId, totalCards]) => ({ userId, totalCards }))
+      .sort((a, b) => b.totalCards - a.totalCards);
+    
+    return leaderboard;
+  } catch (error) {
+    console.error('❌ Error fetching cards solved leaderboard:', error);
+    throw error;
+  }
+}

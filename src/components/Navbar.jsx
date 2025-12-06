@@ -1,5 +1,5 @@
 import { Navbar, Container, Nav, Button, Dropdown } from 'react-bootstrap';
-import { BookOpen, LogOut, User, Brain } from 'lucide-react';
+import { BookOpen, LogOut, User, Brain, Users, Trophy, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,6 +37,21 @@ const NavigationBar = () => {
                 <Nav.Link onClick={() => navigate('/dashboard')}>
                   <BookOpen size={18} className="me-2" />
                   Dashboard
+                </Nav.Link>
+                
+                <Nav.Link onClick={() => navigate('/friends')}>
+                  <Users size={18} className="me-2" />
+                  Friends
+                </Nav.Link>
+                
+                <Nav.Link onClick={() => navigate('/shared-decks')}>
+                  <Share2 size={18} className="me-2" />
+                  Shared Decks
+                </Nav.Link>
+                
+                <Nav.Link onClick={() => navigate('/leaderboard')}>
+                  <Trophy size={18} className="me-2" />
+                  Leaderboard
                 </Nav.Link>
                 
                 <Dropdown align="end" className="ms-3">
