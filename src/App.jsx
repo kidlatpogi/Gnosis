@@ -8,6 +8,9 @@ import Dashboard from './pages/Dashboard';
 import Study from './pages/Study';
 import CreateDeck from './pages/CreateDeck';
 import AddCards from './pages/AddCards';
+import Friends from './pages/Friends';
+import SharedDecks from './pages/SharedDecks';
+import Leaderboard from './pages/Leaderboard';
 import './App.css';
 
 // Protected Route Component
@@ -65,6 +68,30 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AddCards />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/friends" 
+              element={
+                <ProtectedRoute>
+                  <Friends />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/shared-decks" 
+              element={
+                <ProtectedRoute>
+                  <SharedDecks />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/leaderboard" 
+              element={
+                <ProtectedRoute>
+                  <Leaderboard />
                 </ProtectedRoute>
               } 
             />
