@@ -1,9 +1,11 @@
 import { Row, Col, Card, Button, Badge, ButtonGroup, Modal } from 'react-bootstrap';
-import { BookOpen, Clock, TrendingUp, Edit2, Trash2 } from 'lucide-react';
+import { BookOpen, Clock, TrendingUp, Edit2, Trash2, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { deleteDeck } from '../lib/db';
+import { useNavigate } from 'react-router-dom';
 
 const DeckList = ({ decks, deckStats, onStudy, onEdit, onDelete }) => {
+  const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deckToDelete, setDeckToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -134,10 +136,21 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onDelete }) => {
                     )}
                   </Button>
                   <Button 
+                    variant="outline-primary"
+                    onClick={() => navigate('/shared-decks', { state: { shareDeck: deck } })}
+                    title="Share with friends"
+                    style={{ 
+                      flex: '1 1 15%',
+                      fontWeight: 600
+                    }}
+                  >
+                    <Share2 size={18} />
+                  </Button>
+                  <Button 
                     variant="outline-dark"
                     onClick={() => onEdit && onEdit(deck)}
                     style={{ 
-                      flex: '1 1 20%',
+                      flex: '1 1 15%',
                       fontWeight: 600
                     }}
                   >
@@ -147,7 +160,7 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onDelete }) => {
                     variant="outline-danger"
                     onClick={() => handleDeleteClick(deck)}
                     style={{ 
-                      flex: '1 1 20%',
+                      flex: '1 1 15%',
                       fontWeight: 600
                     }}
                   >

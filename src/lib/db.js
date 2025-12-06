@@ -444,19 +444,28 @@ export async function rejectFriendRequest(requestId) {
  */
 export async function getFriends(userId) {
   try {
+    if (!userId) {
+      console.error('❌ getFriends: Missing userId');
+      return [];
+    }
+    
     const friendsRef = collection(db, 'friends');
-    const q = query(friendsRef, where('userId', '==', userId));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(friendsRef);
     
     const friends = [];
-    querySnapshot.forEach((doc) => {
-      friends.push(doc.data().friendId);
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      // Filter client-side to avoid index requirement
+      if (data.userId === userId && data.friendId) {
+        friends.push(data.friendId);
+      }
     });
     
+    console.log(`✅ Found ${friends.length} friends for user ${userId}`);
     return friends;
   } catch (error) {
     console.error('❌ Error fetching friends:', error);
-    throw error;
+    return []; // Return empty array instead of throwing
   }
 }
 
@@ -474,32 +483,32 @@ export function listenToFriendRequests(userEmail, callback) {
   }
   
   try {
+    // Use simple collection query and filter client-side to avoid composite index
     const requestsRef = collection(db, 'friend_requests');
-    const q = query(
-      requestsRef,
-      where('toUserEmail', '==', userEmail),
-      where('status', '==', 'pending')
-    );
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(requestsRef, (snapshot) => {
       const requests = [];
-      snapshot.forEach((doc) => {
-        requests.push({
-          id: doc.id,
-          ...doc.data()
-        });
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Filter client-side for this user's pending requests
+        if (data.toUserEmail === userEmail && data.status === 'pending') {
+          requests.push({
+            id: docSnap.id,
+            ...data
+          });
+        }
       });
+      console.log(`📨 Found ${requests.length} pending friend requests`);
       callback(requests);
     }, (error) => {
       console.error('❌ Error listening to friend requests:', error);
-      // Still call callback with empty array on error
       callback([]);
     });
     
     return unsubscribe;
   } catch (error) {
     console.error('❌ Error setting up friend requests listener:', error);
-    throw error;
+    return () => {};
   }
 }
 
@@ -517,28 +526,29 @@ export function listenToFriends(userId, callback) {
   }
   
   try {
+    // Use simple collection query and filter client-side to avoid index requirement
     const friendsRef = collection(db, 'friends');
-    const q = query(friendsRef, where('userId', '==', userId));
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(friendsRef, (snapshot) => {
       const friends = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.friendId) {
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Filter client-side for this user's friends
+        if (data.userId === userId && data.friendId) {
           friends.push(data.friendId);
         }
       });
+      console.log(`👥 Found ${friends.length} friends`);
       callback(friends);
     }, (error) => {
       console.error('❌ Error listening to friends:', error);
-      // Still call callback with empty array on error
       callback([]);
     });
     
     return unsubscribe;
   } catch (error) {
     console.error('❌ Error setting up friends listener:', error);
-    throw error;
+    return () => {};
   }
 }
 
@@ -645,22 +655,29 @@ export async function importSharedDeck(shareId, userId, deckData) {
  * @returns {Function} - Unsubscribe function
  */
 export function listenToSharedDecks(userId, callback) {
+  if (!userId || !callback) {
+    console.error('❌ listenToSharedDecks: Missing required parameters');
+    return () => {};
+  }
+  
   try {
+    // Use simple collection query and filter client-side to avoid composite index
     const sharesRef = collection(db, 'shared_decks');
-    const q = query(
-      sharesRef,
-      where('toUserId', '==', userId),
-      where('imported', '==', false)
-    );
     
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+    const unsubscribe = onSnapshot(sharesRef, async (snapshot) => {
       const shares = [];
-      snapshot.forEach((doc) => {
-        shares.push({
-          id: doc.id,
-          ...doc.data()
-        });
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Filter client-side for this user's unimported shares
+        if (data.toUserId === userId && data.imported === false) {
+          shares.push({
+            id: docSnap.id,
+            ...data
+          });
+        }
       });
+      
+      console.log(`📦 Found ${shares.length} shared decks`);
       
       // Fetch deck details for each share
       const sharedDecks = await Promise.all(
@@ -681,12 +698,13 @@ export function listenToSharedDecks(userId, callback) {
       callback(sharedDecks.filter(Boolean));
     }, (error) => {
       console.error('❌ Error listening to shared decks:', error);
+      callback([]);
     });
     
     return unsubscribe;
   } catch (error) {
     console.error('❌ Error setting up shared decks listener:', error);
-    throw error;
+    return () => {};
   }
 }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, ListGroup, Badge, Alert, Modal, Form } from 'react-bootstrap';
-import { Share2, Download, Gift, Bell } from 'lucide-react';
+import { Share2, Download, Gift } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   listenToSharedDecks,
@@ -9,25 +9,45 @@ import {
   listenToFriends,
   getAllDecks 
 } from '../lib/db';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function SharedDecks() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sharedDecks, setSharedDecks] = useState([]);
   const [myDecks, setMyDecks] = useState([]);
   const [friends, setFriends] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedDeck, setSelectedDeck] = useState(null);
   const [selectedFriend, setSelectedFriend] = useState('');
 
+  // Handle incoming deck from Dashboard share button
   useEffect(() => {
-    if (!user) return;
+    if (location.state?.shareDeck) {
+      setSelectedDeck(location.state.shareDeck);
+      setShowShareModal(true);
+      // Clear the state so modal doesn't reopen on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
+
+  useEffect(() => {
+    if (!user || !user.uid) {
+      console.log('⏳ Waiting for user authentication...');
+      return;
+    }
+
+    console.log('📡 Setting up SharedDecks listeners for user:', user.uid);
+
+    // Load user's own decks first
+    loadMyDecks();
 
     // Real-time listener for shared decks
     const unsubscribeShared = listenToSharedDecks(user.uid, (decks) => {
+      console.log('📦 Shared decks updated:', decks.length);
       const previousCount = sharedDecks.length;
       setSharedDecks(decks);
       
@@ -42,27 +62,33 @@ function SharedDecks() {
 
     // Real-time listener for friends
     const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
+      console.log('👥 Friends list updated:', friendsList.length);
       setFriends(friendsList);
     });
 
-    // Load user's own decks
-    loadMyDecks();
-
     return () => {
+      console.log('🔌 Cleaning up SharedDecks listeners');
       unsubscribeShared();
       unsubscribeFriends();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.uid]);
 
   const loadMyDecks = async () => {
     try {
+      setLoading(true);
+      console.log('📚 Loading my decks...');
       const decks = await getAllDecks();
+      console.log('📚 Total decks in system:', decks.length);
       // Filter to only user's decks
       const userDecks = decks.filter(deck => deck.creatorId === user.uid);
+      console.log('📚 My decks:', userDecks.length);
       setMyDecks(userDecks);
     } catch (error) {
       console.error('Error loading my decks:', error);
+      setMessage({ type: 'danger', text: 'Failed to load your decks.' });
+    } finally {
+      setLoading(false);
     }
   };
 
