@@ -367,29 +367,44 @@ export async function getFriendRequests(userEmail) {
  */
 export async function acceptFriendRequest(requestId, userId, friendId) {
   try {
-    // Update request status
+    // First verify the request exists
     const requestRef = doc(db, 'friend_requests', requestId);
-    await updateDoc(requestRef, { status: 'accepted' });
+    const requestSnap = await getDoc(requestRef);
+    
+    if (!requestSnap.exists()) {
+      throw new Error('Friend request not found');
+    }
+    
+    // Update request status
+    await updateDoc(requestRef, { 
+      status: 'accepted',
+      acceptedAt: serverTimestamp()
+    });
     
     // Create friendship documents (bidirectional)
     const friendship1Id = `${userId}_${friendId}`;
     const friendship2Id = `${friendId}_${userId}`;
     
-    await setDoc(doc(db, 'friends', friendship1Id), {
-      userId,
-      friendId,
-      createdAt: serverTimestamp()
-    });
-    
-    await setDoc(doc(db, 'friends', friendship2Id), {
-      userId: friendId,
-      friendId: userId,
-      createdAt: serverTimestamp()
-    });
+    // Use batch or Promise.all for atomic operations
+    await Promise.all([
+      setDoc(doc(db, 'friends', friendship1Id), {
+        userId,
+        friendId,
+        createdAt: serverTimestamp()
+      }),
+      setDoc(doc(db, 'friends', friendship2Id), {
+        userId: friendId,
+        friendId: userId,
+        createdAt: serverTimestamp()
+      })
+    ]);
     
     console.log('✅ Friend request accepted');
   } catch (error) {
     console.error('❌ Error accepting friend request:', error);
+    console.error('Request ID:', requestId);
+    console.error('User ID:', userId);
+    console.error('Friend ID:', friendId);
     throw error;
   }
 }
@@ -402,10 +417,22 @@ export async function acceptFriendRequest(requestId, userId, friendId) {
 export async function rejectFriendRequest(requestId) {
   try {
     const requestRef = doc(db, 'friend_requests', requestId);
-    await updateDoc(requestRef, { status: 'rejected' });
+    
+    // Verify request exists
+    const requestSnap = await getDoc(requestRef);
+    if (!requestSnap.exists()) {
+      throw new Error('Friend request not found');
+    }
+    
+    await updateDoc(requestRef, { 
+      status: 'rejected',
+      rejectedAt: serverTimestamp()
+    });
+    
     console.log('✅ Friend request rejected');
   } catch (error) {
     console.error('❌ Error rejecting friend request:', error);
+    console.error('Request ID:', requestId);
     throw error;
   }
 }

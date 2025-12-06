@@ -76,24 +76,33 @@ function Friends() {
   };
 
   const handleAccept = async (requestId, friendId) => {
+    setLoading(true);
     try {
+      console.log('Accepting request:', { requestId, userId: user.uid, friendId });
       await acceptFriendRequest(requestId, user.uid, friendId);
       setMessage({ type: 'success', text: 'Friend request accepted!' });
       setNewRequestCount(0);
     } catch (error) {
-      setMessage({ type: 'danger', text: 'Failed to accept request.' });
+      const errorMsg = error.message || 'Failed to accept request. Please try again.';
+      setMessage({ type: 'danger', text: errorMsg });
       console.error('Error accepting friend request:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReject = async (requestId) => {
+    setLoading(true);
     try {
       await rejectFriendRequest(requestId);
       setMessage({ type: 'info', text: 'Friend request rejected.' });
       setNewRequestCount(0);
     } catch (error) {
-      setMessage({ type: 'danger', text: 'Failed to reject request.' });
+      const errorMsg = error.message || 'Failed to reject request. Please try again.';
+      setMessage({ type: 'danger', text: errorMsg });
       console.error('Error rejecting friend request:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
