@@ -12,7 +12,7 @@ const Study = () => {
   const { deckId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [deck, setDeck] = useState(null);
   const [dueCards, setDueCards] = useState([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -21,17 +21,17 @@ const Study = () => {
   const [cardsToRetry, setCardsToRetry] = useState([]);
   const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
-  
+
   // Active time tracking with idle detection
   const [activeTimeMs, setActiveTimeMs] = useState(0);
   const [lastActivityTime, setLastActivityTime] = useState(Date.now());
   const [isActive, setIsActive] = useState(true);
   const [currentSegmentStart, setCurrentSegmentStart] = useState(Date.now());
   const [studyMode, setStudyMode] = useState('flashcard');
-  
+
   const IDLE_TIMEOUT = 120000; // 2 minutes
   const IDLE_CHECK_INTERVAL = 10000; // Check every 10 seconds
-  
+
   // Record user activity
   const recordActivity = () => {
     const now = Date.now();
@@ -41,13 +41,13 @@ const Study = () => {
       setCurrentSegmentStart(now);
     }
   };
-  
+
   // Idle detection hook
   useEffect(() => {
     const checkIdle = setInterval(() => {
       const now = Date.now();
       const timeSinceActivity = now - lastActivityTime;
-      
+
       if (timeSinceActivity >= IDLE_TIMEOUT && isActive) {
         const segmentDuration = lastActivityTime - currentSegmentStart;
         setActiveTimeMs(prev => prev + segmentDuration);
@@ -62,7 +62,7 @@ const Study = () => {
         setCurrentSegmentStart(now);
       }
     }, IDLE_CHECK_INTERVAL);
-    
+
     return () => clearInterval(checkIdle);
   }, [lastActivityTime, isActive, currentSegmentStart, IDLE_TIMEOUT, IDLE_CHECK_INTERVAL]);
 
@@ -104,11 +104,11 @@ const Study = () => {
 
         // If no cards are due but deck has cards, load all cards for review
         const finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
-        
+
         // Shuffle cards for randomization
         const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
         setDueCards(shuffledCards);
-        
+
         // Initialize active time tracking if there are cards
         if (finalCards.length > 0) {
           const now = Date.now();
@@ -139,7 +139,7 @@ const Study = () => {
           const currentSegmentDuration = Date.now() - currentSegmentStart;
           finalActiveTime += currentSegmentDuration;
         }
-        
+
         if (finalActiveTime >= 1000) { // Only save if at least 1 second
           // Use a synchronous approach for beforeunload
           const now = new Date();
@@ -147,7 +147,7 @@ const Study = () => {
           const month = String(now.getMonth() + 1).padStart(2, '0');
           const day = String(now.getDate()).padStart(2, '0');
           const today = `${year}-${month}-${day}`;
-          
+
           try {
             // This will be a synchronous save attempt - Firebase may not complete it
             // So we also save on component unmount
@@ -175,10 +175,10 @@ const Study = () => {
   const handleRateCard = async (quality, hintUsed) => {
     // Record user activity
     recordActivity();
-    
+
     try {
       const currentCard = dueCards[currentCardIndex];
-      
+
       // Adjust quality if hint was used
       const adjustedQuality = adjustQualityForHint(quality, hintUsed);
 
@@ -200,20 +200,23 @@ const Study = () => {
         previousCardData
       );
 
+      // Prepare card progress data - only include defined values
+      const cardProgressData = {
+        cardId: currentCard.id,
+        learningState,
+        interval,
+        easeFactor,
+        nextReviewDate: nextReview,
+        lastReviewed: new Date().toISOString(),
+        reviewCount: (previousCardData.reviewCount || 0) + 1
+      };
+
       // Update progress
       const updatedProgress = {
         ...currentProgress,
         cards: {
           ...currentProgress.cards,
-          [currentCard.id]: {
-            cardId: currentCard.id,
-            learningState,
-            interval,
-            easeFactor,
-            nextReviewDate: nextReview,
-            lastReviewed: new Date().toISOString(),
-            reviewCount: (previousCardData.reviewCount || 0) + 1
-          }
+          [currentCard.id]: cardProgressData
         }
       };
 
@@ -238,7 +241,7 @@ const Study = () => {
 
   const saveStudySession = async (finalActiveTimeMs) => {
     if (!user || finalActiveTimeMs < 1000 || !deck) return; // Don't save sessions less than 1 second
-    
+
     try {
       // Format date as YYYY-MM-DD using local browser date
       const now = new Date();
@@ -246,10 +249,10 @@ const Study = () => {
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const today = `${year}-${month}-${day}`;
-      
+
       const studySessionsRef = collection(db, 'studySessions');
       const durationSeconds = finalActiveTimeMs / 1000; // Convert ms to seconds
-      
+
       await addDoc(studySessionsRef, {
         userId: user.uid,
         deckId: deckId,
@@ -290,7 +293,7 @@ const Study = () => {
       const currentSegmentDuration = Date.now() - currentSegmentStart;
       finalActiveTime += currentSegmentDuration;
     }
-    
+
     if (finalActiveTime > 0) {
       await saveStudySession(finalActiveTime);
     }
@@ -300,16 +303,16 @@ const Study = () => {
   const handleReviewAgain = async () => {
     setCurrentCardIndex(0);
     setLoading(true);
-    
+
     try {
       // Reload deck and load ALL cards (not just due cards)
       const deckRef = doc(db, 'decks', deckId);
       const deckSnap = await getDoc(deckRef);
-      
+
       if (deckSnap.exists()) {
         const deckData = { id: deckSnap.id, ...deckSnap.data() };
         setDeck(deckData);
-        
+
         // Load all cards from the deck for review again
         if (deckData.cards && deckData.cards.length > 0) {
           // Shuffle cards for randomization
@@ -360,8 +363,8 @@ const Study = () => {
       <Container>
         {/* Header */}
         <div className="mb-4">
-          <Button 
-            variant="outline-dark" 
+          <Button
+            variant="outline-dark"
             onClick={handleBackToDashboard}
             className="d-flex align-items-center gap-2 mb-3 shadow-sm"
             style={{ background: '#ffffff', border: '2px solid #000' }}
@@ -414,22 +417,22 @@ const Study = () => {
                   <span className="badge bg-danger">✗ To Review: {cardsToRetry.length}</span>
                 </div>
               </div>
-              
+
               {cardsToRetry.length > 0 ? (
                 <>
                   <p className="text-muted mb-4">You have {cardsToRetry.length} card(s) to review. Let's practice them again!</p>
                   <div className="d-flex gap-3 justify-content-center">
-                    <Button 
-                      variant="primary" 
-                      size="lg" 
+                    <Button
+                      variant="primary"
+                      size="lg"
                       onClick={handleStartNextRound}
                       className="px-4"
                     >
                       Start Round {currentRound + 1}
                     </Button>
-                    <Button 
-                      variant="outline-dark" 
-                      size="lg" 
+                    <Button
+                      variant="outline-dark"
+                      size="lg"
                       onClick={handleBackToDashboard}
                       className="px-4"
                     >
@@ -441,17 +444,17 @@ const Study = () => {
                 <>
                   <p className="text-muted mb-4">Perfect! You've mastered all cards this round!</p>
                   <div className="d-flex gap-3 justify-content-center">
-                    <Button 
-                      variant="outline-dark" 
-                      size="lg" 
+                    <Button
+                      variant="outline-dark"
+                      size="lg"
                       onClick={handleReviewAgain}
                       className="px-4"
                     >
                       Review All Again
                     </Button>
-                    <Button 
-                      variant="dark" 
-                      size="lg" 
+                    <Button
+                      variant="dark"
+                      size="lg"
                       onClick={handleBackToDashboard}
                       className="px-4"
                     >

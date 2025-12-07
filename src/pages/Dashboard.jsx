@@ -18,6 +18,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDeck, setEditingDeck] = useState(null);
+  const [editCardsOnly, setEditCardsOnly] = useState(false);
 
   useEffect(() => {
     loadDecks();
@@ -86,20 +87,24 @@ const Dashboard = () => {
     // Reload decks after creating/updating a deck
     loadDecks();
     setEditingDeck(null);
+    setEditCardsOnly(false);
   };
 
   const handleEditDeck = (deck) => {
     setEditingDeck(deck);
+    setEditCardsOnly(false);
     setShowAddModal(true);
   };
 
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingDeck(null);
+    setEditCardsOnly(false);
   };
 
   const handleEditCards = (deck) => {
     setEditingDeck(deck);
+    setEditCardsOnly(true);
     setShowAddModal(true);
   };
 
@@ -112,7 +117,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', paddingTop: '2rem', paddingBottom: '3rem', background: '#ffffff' }}>
+    <div style={{ minHeight: '100vh', paddingTop: '2rem', paddingBottom: '3rem', background: '#f5f5f5' }}>
       <Container>
         {/* Header Card */}
         <div className="card glass-card shadow-lg mb-5 p-4">
@@ -209,6 +214,7 @@ const Dashboard = () => {
           onHide={handleModalClose}
           onDeckCreated={handleDeckCreated}
           existingDeck={editingDeck}
+          startAtCardsStep={editCardsOnly}
         />
       </Container>
     </div>
