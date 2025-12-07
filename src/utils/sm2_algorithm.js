@@ -23,10 +23,10 @@ export function calculateNextReview(quality, cardState = {}) {
     throw new Error('Quality must be between 1 and 5');
   }
 
-  const { 
-    learningState = 'new', 
-    interval = 0, 
-    easeFactor = 2.5 
+  const {
+    learningState = 'new',
+    interval = 0,
+    easeFactor = 2.5
   } = cardState;
 
   let newState = learningState;
@@ -48,7 +48,7 @@ export function calculateNextReview(quality, cardState = {}) {
       newInterval = 1; // 1 day
       nextReview = new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000);
     }
-  } 
+  }
   // REVIEW STATE (Long-term steps in days)
   else {
     if (quality === 1) {
@@ -62,10 +62,42 @@ export function calculateNextReview(quality, cardState = {}) {
         1.3,
         easeFactor + 0.1 // Increase ease factor each successful review
       );
-      newInterval = Math.round(interval * newEaseFactor);
+
+      // Validate interval before calculation
+      let safeInterval = isNaN(interval) || interval === null || interval === undefined ? 1 : interval;
+
+      // Cap unreasonably large intervals (max 365 days = 1 year)
+      if (safeInterval > 365) {
+        console.warn('Interval too large, resetting:', safeInterval);
+        safeInterval = 1;
+      }
+
+      const safeEaseFactor = isNaN(newEaseFactor) || newEaseFactor === null ? 2.5 : newEaseFactor;
+
+      newInterval = Math.round(safeInterval * safeEaseFactor);
       newInterval = Math.max(newInterval, 1); // At least 1 day
+      newInterval = Math.min(newInterval, 365); // Cap at 365 days
+
+      // Validate newInterval before creating date
+      if (isNaN(newInterval) || !isFinite(newInterval)) {
+        console.error('Invalid interval calculation:', { interval, easeFactor, newInterval });
+        newInterval = 1;
+      }
+
       nextReview = new Date(now.getTime() + newInterval * 24 * 60 * 60 * 1000);
     }
+  }
+
+  // Validate nextReview before converting to ISO string
+  if (!nextReview || isNaN(nextReview.getTime())) {
+    console.error('Invalid nextReview date, using default (1 day from now)', {
+      learningState,
+      interval,
+      easeFactor,
+      newInterval,
+      nextReview
+    });
+    nextReview = new Date(Date.now() + 24 * 60 * 60 * 1000);
   }
 
   return {
@@ -99,7 +131,7 @@ export function adjustQualityForHint(userQuality, hintUsed) {
  */
 export function isCardDue(nextReview) {
   if (!nextReview) return true;
-  
+
   const now = new Date();
   let reviewDate;
 
@@ -116,7 +148,7 @@ export function isCardDue(nextReview) {
   } else {
     return true; // If we can't parse it, assume it's due
   }
-  
+
   return now >= reviewDate;
 }
 
@@ -127,17 +159,17 @@ export function isCardDue(nextReview) {
  */
 export function getTimeUntilReview(nextReview) {
   if (!nextReview) return 'now';
-  
+
   const now = new Date();
   const reviewDate = new Date(nextReview);
   const diff = reviewDate.getTime() - now.getTime();
-  
+
   if (diff <= 0) return 'now';
-  
+
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  
+
   if (minutes < 60) return `in ${minutes} minute${minutes !== 1 ? 's' : ''}`;
   if (hours < 24) return `in ${hours} hour${hours !== 1 ? 's' : ''}`;
   return `in ${days} day${days !== 1 ? 's' : ''}`;

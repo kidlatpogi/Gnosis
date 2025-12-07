@@ -200,14 +200,44 @@ const Study = () => {
         previousCardData
       );
 
+      // Validate and ensure all dates are valid ISO strings
+      let validNextReview;
+      let validLastReviewed;
+
+      try {
+        // Validate nextReview
+        const testNextReview = new Date(nextReview);
+        if (isNaN(testNextReview.getTime())) {
+          validNextReview = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        } else {
+          validNextReview = testNextReview.toISOString();
+        }
+      } catch (err) {
+        console.error('Error validating nextReview:', err);
+        validNextReview = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      try {
+        // Validate lastReviewed
+        const now = new Date();
+        if (isNaN(now.getTime())) {
+          validLastReviewed = new Date(Date.now()).toISOString();
+        } else {
+          validLastReviewed = now.toISOString();
+        }
+      } catch (err) {
+        console.error('Error creating lastReviewed:', err);
+        validLastReviewed = new Date(Date.now()).toISOString();
+      }
+
       // Prepare card progress data - only include defined values
       const cardProgressData = {
         cardId: currentCard.id,
         learningState,
         interval,
         easeFactor,
-        nextReviewDate: nextReview,
-        lastReviewed: new Date().toISOString(),
+        nextReviewDate: validNextReview,
+        lastReviewed: validLastReviewed,
         reviewCount: (previousCardData.reviewCount || 0) + 1
       };
 
