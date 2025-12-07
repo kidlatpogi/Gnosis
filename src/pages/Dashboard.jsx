@@ -27,7 +27,7 @@ const Dashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load all decks using helper function
       const decksData = await getAllDecks();
       // Filter to only show user's own decks
@@ -40,12 +40,12 @@ const Dashboard = () => {
         for (const deck of userDecks) {
           try {
             const progress = await getUserProgress(user.uid, deck.id);
-            
+
             if (progress && progress.cards) {
-              const dueCards = Object.values(progress.cards).filter(card => 
+              const dueCards = Object.values(progress.cards).filter(card =>
                 isCardDue(card.nextReviewDate)
               );
-              
+
               stats[deck.id] = {
                 total: deck.cards?.length || 0,
                 mastered: Object.keys(progress.cards).length,
@@ -98,6 +98,11 @@ const Dashboard = () => {
     setEditingDeck(null);
   };
 
+  const handleEditCards = (deck) => {
+    setEditingDeck(deck);
+    setShowAddModal(true);
+  };
+
   if (loading) {
     return (
       <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
@@ -120,8 +125,8 @@ const Dashboard = () => {
                 Master knowledge through spaced repetition
               </p>
             </div>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               size="lg"
               onClick={() => navigate('/create-deck')}
               className="d-flex align-items-center gap-2 px-4 py-3 shadow-sm"
@@ -146,14 +151,15 @@ const Dashboard = () => {
           </Alert>
         )}
 
-      {/* Deck List */}
-      <DeckList 
-        decks={decks} 
-        deckStats={deckStats}
-        onStudy={handleStudy}
-        onEdit={handleEditDeck}
-        onDelete={() => loadDecks()}
-      />
+        {/* Deck List */}
+        <DeckList
+          decks={decks}
+          deckStats={deckStats}
+          onStudy={handleStudy}
+          onEdit={handleEditDeck}
+          onEditCards={handleEditCards}
+          onDelete={() => loadDecks()}
+        />
 
         {/* Empty State */}
         {decks.length === 0 && !loading && (
@@ -166,8 +172,8 @@ const Dashboard = () => {
               Start your learning journey by creating your first deck, or try our sample deck.
             </p>
             <div className="d-flex gap-3 justify-content-center flex-wrap">
-              <Button 
-                variant="primary" 
+              <Button
+                variant="primary"
                 size="lg"
                 onClick={() => navigate('/create-deck')}
                 className="d-flex align-items-center gap-2 px-4 py-3 shadow-sm"
@@ -176,8 +182,8 @@ const Dashboard = () => {
                 <Plus size={22} />
                 Create First Deck
               </Button>
-              <Button 
-                variant="outline-dark" 
+              <Button
+                variant="outline-dark"
                 size="lg"
                 onClick={async () => {
                   try {
