@@ -15,7 +15,7 @@ const StudyHeatmap = () => {
         const studySessionsRef = collection(db, 'studySessions');
         const q = query(studySessionsRef, where('userId', '==', user.uid));
         const querySnapshot = await getDocs(q);
-        
+
         const data = {};
         querySnapshot.forEach((doc) => {
           const session = doc.data();
@@ -28,7 +28,7 @@ const StudyHeatmap = () => {
           const durationMinutes = durationSeconds / 60;
           data[date] += durationMinutes;
         });
-        
+
         setStudyData(data);
       } catch (error) {
         console.error('Error loading study data:', error);
@@ -49,7 +49,7 @@ const StudyHeatmap = () => {
   const generateDates = () => {
     const dates = [];
     const today = new Date();
-    
+
     // Start from 364 days ago and go forward to today (365 total days)
     for (let i = 364; i >= 0; i--) {
       const date = new Date();
@@ -57,7 +57,7 @@ const StudyHeatmap = () => {
       date.setHours(0, 0, 0, 0);
       dates.push(date);
     }
-    
+
     return dates;
   };
 
@@ -81,18 +81,24 @@ const StudyHeatmap = () => {
   // Format duration for tooltip
   const formatDuration = (minutes) => {
     if (!minutes || minutes === 0) return 'No study time';
-    
+
+    // If less than 1 minute, show seconds
+    if (minutes < 1) {
+      const seconds = Math.round(minutes * 60);
+      return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+    }
+
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
-    
+
     if (hours === 0) {
       return `${mins} minute${mins !== 1 ? 's' : ''}`;
     }
-    
+
     if (mins === 0) {
       return `${hours} hour${hours !== 1 ? 's' : ''}`;
     }
-    
+
     return `${hours}h ${mins}m`;
   };
 
@@ -100,27 +106,27 @@ const StudyHeatmap = () => {
   // Group dates by week (Sunday to Saturday)
   const groupByWeeks = (dates) => {
     if (dates.length === 0) return [];
-    
+
     const weeks = [];
     let currentWeek = [];
-    
+
     // Add padding for the first week if it doesn't start on Sunday
     const firstDayOfWeek = dates[0].getDay();
     for (let i = 0; i < firstDayOfWeek; i++) {
       currentWeek.push(null);
     }
-    
+
     // Add all dates
     for (const date of dates) {
       currentWeek.push(date);
-      
+
       // If we have a full week (Sunday included), push it and start a new week
       if (currentWeek.length === 7) {
         weeks.push(currentWeek);
         currentWeek = [];
       }
     }
-    
+
     // Add remaining dates as the last week
     if (currentWeek.length > 0) {
       while (currentWeek.length < 7) {
@@ -128,7 +134,7 @@ const StudyHeatmap = () => {
       }
       weeks.push(currentWeek);
     }
-    
+
     return weeks;
   };
 
@@ -155,16 +161,16 @@ const StudyHeatmap = () => {
     <Card className="shadow-sm">
       <Card.Body>
         <h5 className="mb-3">Study Activity</h5>
-        
+
         <div className="heatmap-container" style={{ overflowX: 'auto', paddingBottom: '10px' }}>
           <div style={{ display: 'inline-flex', gap: '4px', minWidth: 'fit-content' }}>
             {/* Day labels column */}
             <div style={{ display: 'flex', flexDirection: 'column', paddingTop: '18px', marginRight: '4px' }}>
               {['Mon', 'Wed', 'Fri'].map((day, index) => (
-                <div 
+                <div
                   key={day}
                   className="text-muted"
-                  style={{ 
+                  style={{
                     height: index === 0 ? '14px' : '28px',
                     lineHeight: '14px',
                     fontSize: '9px',
@@ -185,7 +191,7 @@ const StudyHeatmap = () => {
                   if (!firstDate) {
                     return <div key={weekIndex} style={{ width: '11px', marginRight: '3px' }} />;
                   }
-                  
+
                   // Show month label only if it's the first week of the month or first week overall
                   let showMonth = false;
                   if (weekIndex === 0) {
@@ -197,7 +203,7 @@ const StudyHeatmap = () => {
                       showMonth = true;
                     }
                   }
-                  
+
                   return (
                     <div key={weekIndex} style={{ width: '11px', marginRight: '3px' }}>
                       {showMonth && (
@@ -240,11 +246,11 @@ const StudyHeatmap = () => {
                             <Tooltip>
                               <strong>{formatDuration(minutes)}</strong>
                               <br />
-                              {date.toLocaleDateString('en-US', { 
+                              {date.toLocaleDateString('en-US', {
                                 weekday: 'short',
-                                month: 'short', 
-                                day: 'numeric', 
-                                year: 'numeric' 
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
                               })}
                             </Tooltip>
                           }

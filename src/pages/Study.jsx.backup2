@@ -21,50 +21,8 @@ const Study = () => {
   const [cardsToRetry, setCardsToRetry] = useState([]);
   const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
-  
-  // Active time tracking with idle detection
-  const [activeTimeMs, setActiveTimeMs] = useState(0);
-  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
-  const [isActive, setIsActive] = useState(true);
-  const [currentSegmentStart, setCurrentSegmentStart] = useState(Date.now());
-  const [studyMode, setStudyMode] = useState('flashcard');
-  
-  const IDLE_TIMEOUT = 120000; // 2 minutes
-  const IDLE_CHECK_INTERVAL = 10000; // Check every 10 seconds
-  
-  // Record user activity
-  const recordActivity = () => {
-    const now = Date.now();
-    setLastActivityTime(now);
-    if (!isActive) {
-      setIsActive(true);
-      setCurrentSegmentStart(now);
-    }
-  };
-  
-  // Idle detection hook
-  useEffect(() => {
-    const checkIdle = setInterval(() => {
-      const now = Date.now();
-      const timeSinceActivity = now - lastActivityTime;
-      
-      if (timeSinceActivity >= IDLE_TIMEOUT && isActive) {
-        const segmentDuration = lastActivityTime - currentSegmentStart;
-        setActiveTimeMs(prev => prev + segmentDuration);
-        setIsActive(false);
-      } else if (isActive) {
-        const segmentDuration = now - currentSegmentStart;
-        setActiveTimeMs(prev => {
-          const previousTotal = prev;
-          const newTotal = previousTotal - (previousTotal % 1000) + segmentDuration;
-          return newTotal;
-        });
-        setCurrentSegmentStart(now);
-      }
-    }, IDLE_CHECK_INTERVAL);
-    
-    return () => clearInterval(checkIdle);
-  }, [lastActivityTime, isActive, currentSegmentStart, IDLE_TIMEOUT, IDLE_CHECK_INTERVAL]);
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+  const [studyMode, setStudyMode] = useState('flashcard'); // Moved from StudyCard for persistence
 
   useEffect(() => {
     const loadData = async () => {
@@ -109,13 +67,9 @@ const Study = () => {
         const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
         setDueCards(shuffledCards);
         
-        // Initialize active time tracking if there are cards
+        // Start tracking study time if there are cards
         if (finalCards.length > 0) {
-          const now = Date.now();
-          setLastActivityTime(now);
-          setCurrentSegmentStart(now);
-          setIsActive(true);
-          setActiveTimeMs(0);
+          setSessionStartTime(Date.now());
         }
       } catch (err) {
         console.error('Error loading deck:', err);
@@ -133,14 +87,9 @@ const Study = () => {
   // Save study session when user leaves the page
   useEffect(() => {
     const handleBeforeUnload = async () => {
-      if (user && deck && activeTimeMs > 0) {
-        let finalActiveTime = activeTimeMs;
-        if (isActive) {
-          const currentSegmentDuration = Date.now() - currentSegmentStart;
-          finalActiveTime += currentSegmentDuration;
-        }
-        
-        if (finalActiveTime >= 1000) { // Only save if at least 1 second
+      if (sessionStartTime && user && deck) {
+        const durationMs = Date.now() - sessionStartTime;
+        if (durationMs >= 1000) { // Only save if at least 1 second
           // Use a synchronous approach for beforeunload
           const now = new Date();
           const year = now.getFullYear();
@@ -156,8 +105,8 @@ const Study = () => {
               deckId: deckId,
               deckTitle: deck.title || 'Unknown Deck',
               date: today,
-              duration: finalActiveTime / 1000,
-              durationMs: finalActiveTime,
+              duration: durationMs / 1000,
+              durationMs: durationMs,
               cardsStudied: currentCardIndex,
               timestamp: new Date().toISOString()
             });
@@ -170,12 +119,9 @@ const Study = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [activeTimeMs, isActive, currentSegmentStart, user, deck, deckId, currentCardIndex]);
+  }, [sessionStartTime, user, deck, deckId, currentCardIndex]);
 
   const handleRateCard = async (quality, hintUsed) => {
-    // Record user activity
-    recordActivity();
-    
     try {
       const currentCard = dueCards[currentCardIndex];
       
@@ -236,8 +182,8 @@ const Study = () => {
     }
   };
 
-  const saveStudySession = async (finalActiveTimeMs) => {
-    if (!user || finalActiveTimeMs < 1000 || !deck) return; // Don't save sessions less than 1 second
+  const saveStudySession = async (durationMs) => {
+    if (!user || durationMs < 1000 || !deck) return; // Don't save sessions less than 1 second
     
     try {
       // Format date as YYYY-MM-DD using local browser date
@@ -248,7 +194,7 @@ const Study = () => {
       const today = `${year}-${month}-${day}`;
       
       const studySessionsRef = collection(db, 'studySessions');
-      const durationSeconds = finalActiveTimeMs / 1000; // Convert ms to seconds
+      const durationSeconds = durationMs / 1000; // Convert ms to seconds
       
       await addDoc(studySessionsRef, {
         userId: user.uid,
@@ -256,7 +202,7 @@ const Study = () => {
         deckTitle: deck.title || 'Unknown Deck',
         date: today,
         duration: durationSeconds, // Store in seconds with precision
-        durationMs: finalActiveTimeMs, // Store active milliseconds
+        durationMs: durationMs, // Also store raw milliseconds
         cardsStudied: currentCardIndex,
         timestamp: new Date().toISOString()
       });
@@ -275,24 +221,15 @@ const Study = () => {
       setCurrentCardIndex(0);
       setCurrentRound(currentRound + 1);
       setRoundStats({ correct: 0, incorrect: 0 });
-      const now = Date.now();
-      setLastActivityTime(now);
-      setCurrentSegmentStart(now);
-      setIsActive(true);
-      setActiveTimeMs(0);
+      setSessionStartTime(Date.now()); // Restart timer for new round
     }
   };
 
   const handleBackToDashboard = async () => {
-    // Calculate and save active study duration
-    let finalActiveTime = activeTimeMs;
-    if (isActive) {
-      const currentSegmentDuration = Date.now() - currentSegmentStart;
-      finalActiveTime += currentSegmentDuration;
-    }
-    
-    if (finalActiveTime > 0) {
-      await saveStudySession(finalActiveTime);
+    // Calculate and save study duration with full precision
+    if (sessionStartTime) {
+      const durationMs = Date.now() - sessionStartTime; // Keep in milliseconds
+      await saveStudySession(durationMs);
     }
     navigate('/dashboard');
   };
@@ -316,11 +253,7 @@ const Study = () => {
           const shuffledCards = [...deckData.cards].sort(() => Math.random() - 0.5);
           setDueCards(shuffledCards);
           // Restart timer for new session
-          const now = Date.now();
-          setLastActivityTime(now);
-          setCurrentSegmentStart(now);
-          setIsActive(true);
-          setActiveTimeMs(0);
+          setSessionStartTime(Date.now());
         } else {
           setError('No cards in this deck');
         }
