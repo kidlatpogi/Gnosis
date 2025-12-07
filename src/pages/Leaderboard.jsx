@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, ListGroup, Badge, Tab, Tabs } from 'react-bootstrap';
 import { Trophy, Clock, CheckSquare, Medal, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  getFriends, 
-  getStudyTimeLeaderboard, 
+import {
+  getFriends,
+  getStudyTimeLeaderboard,
   getCardsSolvedLeaderboard,
   getUserInfo
 } from '../lib/db';
@@ -66,16 +66,21 @@ function Leaderboard() {
   };
 
   const formatMinutes = (minutes) => {
+    // Handle zero or undefined
+    if (!minutes || minutes === 0) {
+      return '0s';
+    }
+
     if (minutes < 1) {
       // Less than 1 minute - show seconds
       const seconds = Math.round(minutes * 60);
       return `${seconds}s`;
     }
-    
+
     const hours = Math.floor(minutes / 60);
     const mins = Math.floor(minutes % 60);
     const secs = Math.round((minutes % 1) * 60);
-    
+
     if (hours > 0) {
       return `${hours}h ${mins}m ${secs}s`;
     }
@@ -92,7 +97,7 @@ function Leaderboard() {
     const displayName = isCurrentUser ? 'You' : (userInfo.displayName || 'Unknown User');
 
     return (
-      <ListGroup.Item 
+      <ListGroup.Item
         key={item.userId}
         className={`d-flex justify-content-between align-items-center ${isCurrentUser ? 'bg-light' : ''}`}
       >
@@ -147,8 +152,8 @@ function Leaderboard() {
         </Card>
       ) : (
         <Tabs defaultActiveKey="studytime" className="mb-4">
-          <Tab 
-            eventKey="studytime" 
+          <Tab
+            eventKey="studytime"
             title={
               <span>
                 <Clock size={18} className="me-2" />
@@ -163,7 +168,7 @@ function Leaderboard() {
                   Most Study Time
                 </h5>
                 <ListGroup>
-                  {studyTimeLeaderboard.map((item, index) => 
+                  {studyTimeLeaderboard.map((item, index) =>
                     renderLeaderboardItem(item, index, 'time')
                   )}
                 </ListGroup>
@@ -174,8 +179,8 @@ function Leaderboard() {
             </Card>
           </Tab>
 
-          <Tab 
-            eventKey="cards" 
+          <Tab
+            eventKey="cards"
             title={
               <span>
                 <CheckSquare size={18} className="me-2" />
@@ -190,7 +195,7 @@ function Leaderboard() {
                   Most Cards Solved
                 </h5>
                 <ListGroup>
-                  {cardsSolvedLeaderboard.map((item, index) => 
+                  {cardsSolvedLeaderboard.map((item, index) =>
                     renderLeaderboardItem(item, index, 'cards')
                   )}
                 </ListGroup>
