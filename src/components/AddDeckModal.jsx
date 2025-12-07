@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Form, InputGroup, ListGroup, Badge, Alert } from 'react-bootstrap';
-import { Plus, Trash2, ArrowRight, ArrowLeft, Edit2 } from 'lucide-react';
+import { Modal, Button, Form, ListGroup, Badge, Alert, Row, Col } from 'react-bootstrap';
+import { Plus, Trash2, ArrowRight, ArrowLeft, Edit2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { createDeck, updateDeck } from '../lib/db';
 
-const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
+const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null, startAtCardsStep = false }) => {
   const { user } = useAuth();
   const [step, setStep] = useState(1); // Step 1: Deck info, Step 2: Cards
   const [loading, setLoading] = useState(false);
@@ -28,8 +28,13 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
       setTitle(existingDeck.title || '');
       setSubject(existingDeck.subject || '');
       setCards(existingDeck.cards || []);
+
+      // If startAtCardsStep is true, skip to step 2
+      if (startAtCardsStep) {
+        setStep(2);
+      }
     }
-  }, [existingDeck, show]);
+  }, [existingDeck, show, startAtCardsStep]);
 
   const resetForm = () => {
     setStep(1);
@@ -55,6 +60,13 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
       setError('Please enter a deck title');
       return;
     }
+
+    // If in edit mode, save directly instead of going to step 2
+    if (isEditMode) {
+      handleSaveDeck();
+      return;
+    }
+
     setError(null);
     setStep(2);
   };
@@ -72,8 +84,8 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
 
     if (editingCardId) {
       // Update existing card
-      setCards(cards.map(card => 
-        card.id === editingCardId 
+      setCards(cards.map(card =>
+        card.id === editingCardId
           ? { ...card, front: currentFront.trim(), back: currentBack.trim(), hint: currentHint.trim() || undefined }
           : card
       ));
@@ -132,10 +144,24 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
       setLoading(true);
       setError(null);
 
+      // Clean cards data - remove undefined values
+      const cleanedCards = cards.map(card => {
+        const cleanCard = {
+          id: card.id,
+          front: card.front,
+          back: card.back
+        };
+        // Only add hint if it exists and is not undefined
+        if (card.hint && card.hint.trim()) {
+          cleanCard.hint = card.hint;
+        }
+        return cleanCard;
+      });
+
       const deckData = {
         title: title.trim(),
         subject: subject.trim() || 'General',
-        cards: cards
+        cards: cleanedCards
       };
 
       if (isEditMode && existingDeck) {
@@ -204,40 +230,43 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
           </Form>
         )}
 
-        {/* Step 2: Add Cards */}
+        {/* Step 2: Add Cards - TWO COLUMN LAYOUT */}
         {step === 2 && (
-          <>
-            <div className="mb-4">
-              <h6 className="mb-3">Add Cards to: <Badge bg="primary">{title}</Badge></h6>
-              
+          <Row className="g-3">
+            {/* Left Column: Add Card Form */}
+            <Col md={6}>
+              <h6 className="mb-3 fw-bold">
+                {editingCardId ? '✏️ Edit Card' : '➕ Add New Card'}
+              </h6>
+
               <Form>
                 <Form.Group className="mb-2">
-                  <Form.Label>Front (Question)</Form.Label>
+                  <Form.Label className="fw-bold">Front (Question)</Form.Label>
                   <Form.Control
                     as="textarea"
-                    rows={2}
-                    placeholder="What appears on the front of the card?"
+                    rows={3}
+                    placeholder="Enter the question or term..."
                     value={currentFront}
                     onChange={(e) => setCurrentFront(e.target.value)}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-2">
-                  <Form.Label>Back (Answer)</Form.Label>
+                  <Form.Label className="fw-bold">Back (Answer)</Form.Label>
                   <Form.Control
                     as="textarea"
-                    rows={2}
-                    placeholder="What appears on the back of the card?"
+                    rows={3}
+                    placeholder="Enter the answer or definition..."
                     value={currentBack}
                     onChange={(e) => setCurrentBack(e.target.value)}
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Hint (Optional)</Form.Label>
+                  <Form.Label className="fw-bold">Hint (Optional)</Form.Label>
                   <Form.Control
                     type="text"
-                    placeholder="A subtle clue to help with recall"
+                    placeholder="Add a helpful hint..."
                     value={currentHint}
                     onChange={(e) => setCurrentHint(e.target.value)}
                   />
@@ -246,92 +275,99 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
                   </Form.Text>
                 </Form.Group>
 
-                {editingCardId && (
-                  <Button 
-                    variant="outline-secondary" 
-                    onClick={cancelEdit}
-                    className="w-100 mb-2"
+                <div className="d-flex gap-2">
+                  <Button
+                    variant="primary"
+                    onClick={addCard}
+                    disabled={!currentFront.trim() || !currentBack.trim()}
+                    className="flex-fill d-flex align-items-center justify-content-center gap-2"
                   >
-                    Cancel Edit
+                    {editingCardId ? (
+                      <>
+                        <Edit2 size={18} />
+                        Update Card
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={18} />
+                        Add Card
+                      </>
+                    )}
                   </Button>
-                )}
-
-                <Button 
-                  variant="outline-primary" 
-                  onClick={addCard}
-                  className="w-100 mb-3"
-                  disabled={!currentFront.trim() || !currentBack.trim()}
-                >
-                  {editingCardId ? (
-                    <>
-                      <Edit2 size={18} className="me-2" />
-                      Update Card
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={18} className="me-2" />
-                      Add Card
-                    </>
+                  {editingCardId && (
+                    <Button
+                      variant="outline-secondary"
+                      onClick={cancelEdit}
+                    >
+                      <X size={18} />
+                    </Button>
                   )}
-                </Button>
+                </div>
               </Form>
-            </div>
+            </Col>
 
-            {/* Card List */}
-            {cards.length > 0 && (
-              <>
-                <h6 className="mb-2">
-                  Cards Added ({cards.length})
-                </h6>
-                <ListGroup className="mb-3" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {/* Right Column: Cards List */}
+            <Col md={6}>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h6 className="mb-0 fw-bold">📚 Cards ({cards.length})</h6>
+              </div>
+
+              {cards.length === 0 ? (
+                <div className="text-center text-muted py-5">
+                  <p>No cards yet</p>
+                  <small>Add your first card using the form ←</small>
+                </div>
+              ) : (
+                <ListGroup variant="flush" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                   {cards.map((card, index) => (
-                    <ListGroup.Item 
+                    <ListGroup.Item
                       key={card.id}
-                      className="d-flex justify-content-between align-items-center"
+                      className="border-0 mb-2 rounded-3 shadow-sm"
                       variant={editingCardId === card.id ? 'primary' : undefined}
                     >
-                      <div className="flex-grow-1">
-                        <div className="fw-bold">#{index + 1}</div>
-                        <small className="text-muted d-block">
-                          <strong>Q:</strong> {card.front.substring(0, 40)}
-                          {card.front.length > 40 ? '...' : ''}
-                        </small>
-                        {card.hint && (
-                          <small className="text-info d-block">
-                            💡 {card.hint.substring(0, 30)}
-                            {card.hint.length > 30 ? '...' : ''}
-                          </small>
-                        )}
-                      </div>
-                      <div className="d-flex gap-2">
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          onClick={() => editCard(card)}
-                          disabled={editingCardId !== null}
-                        >
-                          <Edit2 size={16} />
-                        </Button>
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => removeCard(card.id)}
-                        >
-                          <Trash2 size={16} />
-                        </Button>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="flex-grow-1">
+                          <Badge bg="secondary" className="mb-2">Card {index + 1}</Badge>
+                          <div className="mb-2">
+                            <strong>Q:</strong> {card.front.substring(0, 50)}
+                            {card.front.length > 50 ? '...' : ''}
+                          </div>
+                          <div className="mb-2">
+                            <strong>A:</strong> {card.back.substring(0, 50)}
+                            {card.back.length > 50 ? '...' : ''}
+                          </div>
+                          {card.hint && (
+                            <div className="text-muted">
+                              <small>💡 {card.hint.substring(0, 30)}
+                                {card.hint.length > 30 ? '...' : ''}
+                              </small>
+                            </div>
+                          )}
+                        </div>
+                        <div className="d-flex gap-2 ms-3">
+                          <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => editCard(card)}
+                            disabled={editingCardId !== null}
+                          >
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => removeCard(card.id)}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
                       </div>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
-              </>
-            )}
-
-            {cards.length === 0 && (
-              <Alert variant="info">
-                No cards added yet. Add at least one card to save the deck.
-              </Alert>
-            )}
-          </>
+              )}
+            </Col>
+          </Row>
         )}
       </Modal.Body>
 
@@ -342,21 +378,23 @@ const AddDeckModal = ({ show, onHide, onDeckCreated, existingDeck = null }) => {
               Cancel
             </Button>
             <Button variant="primary" onClick={handleNextStep}>
-              Next: Add Cards
-              <ArrowRight size={18} className="ms-2" />
+              {isEditMode ? 'Save Deck' : 'Next: Add Cards'}
+              {!isEditMode && <ArrowRight size={18} className="ms-2" />}
             </Button>
           </>
         ) : (
           <>
-            <Button variant="outline-secondary" onClick={handlePreviousStep}>
-              <ArrowLeft size={18} className="me-2" />
-              Back
-            </Button>
+            {!startAtCardsStep && (
+              <Button variant="outline-secondary" onClick={handlePreviousStep}>
+                <ArrowLeft size={18} className="me-2" />
+                Back
+              </Button>
+            )}
             <Button variant="secondary" onClick={handleClose}>
               Cancel
             </Button>
-            <Button 
-              variant="success" 
+            <Button
+              variant="success"
               onClick={handleSaveDeck}
               disabled={loading || cards.length === 0}
             >

@@ -35,6 +35,7 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) 
       setDeleting(false);
     }
   };
+
   if (!decks || decks.length === 0) {
     return (
       <Card className="text-center p-5 shadow-sm">
@@ -50,7 +51,7 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) 
 
   return (
     <>
-      <Row xs={1} md={2} lg={3} className="g-5">
+      <Row xs={1} md={2} lg={3} className="g-4">
         {decks.map((deck) => {
           const stats = deckStats?.[deck.id] || {
             total: deck.cards?.length || 0,
@@ -60,138 +61,100 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) 
 
           return (
             <Col key={deck.id}>
-              <Card className="h-100 glass-card hover-shadow rounded-4" style={{ transition: 'all 0.3s', border: 'none' }}>
-                <Card.Body className="d-flex flex-column p-4">
+              <Card className="h-100 shadow-sm" style={{
+                transition: 'all 0.2s',
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                backgroundColor: '#ffffff'
+              }}>
+                <Card.Body className="d-flex flex-column p-3">
                   {/* Deck Header */}
-                  <div className="mb-3">
-                    <h5 className="fw-bold mb-2" style={{ fontSize: '1.4rem', color: '#1e293b' }}>{deck.title}</h5>
+                  <div className="mb-2">
+                    <h5 className="fw-bold mb-1" style={{ fontSize: '1.1rem', color: '#000000' }}>
+                      {deck.title}
+                    </h5>
                     <Badge
                       bg="dark"
-                      className="mb-2"
                       style={{
-                        fontSize: '0.85rem',
-                        padding: '0.4em 0.8em',
-                        background: '#000000',
-                        border: 'none',
-                        color: '#ffffff'
+                        fontSize: '0.75rem',
+                        padding: '0.25em 0.6em',
+                        fontWeight: 'normal'
                       }}
                     >
                       {deck.subject}
                     </Badge>
                   </div>
 
-                  {/* Deck Stats */}
-                  <div className="mb-3 flex-grow-1">
-                    <div className="d-flex align-items-center gap-2 mb-2">
-                      <BookOpen size={16} className="text-primary" />
-                      <small className="text-muted">
-                        <strong>{stats.total}</strong> {stats.total === 1 ? 'card' : 'cards'}
-                      </small>
+                  {/* Deck Stats - Compact Horizontal Layout */}
+                  <div className="mb-3 d-flex align-items-center gap-3" style={{ fontSize: '0.85rem' }}>
+                    <div className="d-flex align-items-center gap-1">
+                      <BookOpen size={14} className="text-primary" />
+                      <span><strong>{stats.total}</strong> cards</span>
                     </div>
-
-                    <div className="d-flex align-items-center gap-2 mb-2">
-                      <Clock size={16} className="text-warning" />
-                      <small className="text-muted">
-                        <strong>{stats.due}</strong> due today
-                      </small>
+                    <div className="d-flex align-items-center gap-1">
+                      <Clock size={14} className="text-warning" />
+                      <span><strong>{stats.due}</strong> due today</span>
                     </div>
-
-                    <div className="d-flex align-items-center gap-2">
-                      <TrendingUp size={16} className="text-success" />
-                      <small className="text-muted">
-                        <strong>{stats.mastered}</strong> mastered
-                      </small>
+                    <div className="d-flex align-items-center gap-1">
+                      <TrendingUp size={14} className="text-success" />
+                      <strong>{stats.mastered}</strong> mastered
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="d-flex flex-column gap-2">
-                    {/* Primary Study Button */}
+                  <div className="mt-auto">
+                    {/* Primary Review Button */}
                     <Button
                       variant={stats.due > 0 ? "primary" : "outline-primary"}
                       onClick={() => {
                         if (onStudy) {
                           onStudy(deck.id);
-                        } else {
-                          console.log('Study deck:', deck.id);
                         }
                       }}
                       disabled={stats.total === 0}
-                      className="w-100"
-                      style={{
-                        fontWeight: 600,
-                        fontSize: '1rem',
-                        padding: '0.75rem'
-                      }}
+                      className="w-100 mb-2"
+                      size="sm"
                     >
-                      {stats.due > 0 ? (
-                        <>
-                          <BookOpen size={18} className="me-2" />
-                          Study ({stats.due})
-                        </>
-                      ) : (
-                        <>
-                          <BookOpen size={18} className="me-2" />
-                          Review
-                        </>
-                      )}
+                      <BookOpen size={16} className="me-1" />
+                      {stats.due > 0 ? `Review` : 'Review'}
                     </Button>
 
                     {/* Secondary Action Buttons */}
-                    <ButtonGroup className="w-100">
+                    <ButtonGroup className="w-100" size="sm">
                       <Button
                         variant="outline-secondary"
                         onClick={() => onEditCards && onEditCards(deck)}
                         title="Edit cards"
-                        style={{
-                          flex: 1,
-                          fontWeight: 600
-                        }}
                       >
-                        <FileEdit size={16} className="me-1" />
-                        <span className="d-none d-md-inline">Cards</span>
+                        <FileEdit size={14} />
                       </Button>
                       <Button
-                        variant="outline-primary"
+                        variant="outline-secondary"
                         onClick={() => navigate('/shared-decks', { state: { shareDeck: deck } })}
                         title="Share with friends"
-                        style={{
-                          flex: 1,
-                          fontWeight: 600
-                        }}
                       >
-                        <Share2 size={16} className="me-1" />
-                        <span className="d-none d-md-inline">Share</span>
+                        <Share2 size={14} />
                       </Button>
                       <Button
-                        variant="outline-dark"
+                        variant="outline-secondary"
                         onClick={() => onEdit && onEdit(deck)}
                         title="Edit deck info"
-                        style={{
-                          flex: 1,
-                          fontWeight: 600
-                        }}
                       >
-                        <Edit2 size={16} className="me-1" />
-                        <span className="d-none d-md-inline">Edit</span>
+                        <Edit2 size={14} />
                       </Button>
                       <Button
                         variant="outline-danger"
                         onClick={() => handleDeleteClick(deck)}
                         title="Delete deck"
-                        style={{
-                          flex: 1,
-                          fontWeight: 600
-                        }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </Button>
                     </ButtonGroup>
                   </div>
 
                   {/* Creator Info */}
                   {deck.createdAt && (
-                    <small className="text-muted text-center mt-2">
+                    <small className="text-muted text-center mt-2" style={{ fontSize: '0.7rem' }}>
                       Created {new Date(deck.createdAt?.toDate?.() || deck.createdAt).toLocaleDateString()}
                     </small>
                   )}

@@ -365,20 +365,22 @@ function Friends() {
               ) : (
                 <ListGroup>
                   {friendsWithDetails.map((friend) => (
-                    <ListGroup.Item key={friend.uid} className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <strong>{friend.displayName}</strong>
-                        <div className="small text-muted">{friend.email}</div>
+                    <ListGroup.Item key={friend.uid} className="border-0 mb-2">
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div className="flex-grow-1">
+                          <strong style={{ fontSize: '1rem' }}>{friend.displayName}</strong>
+                          <div className="small text-muted">{friend.email}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline-danger"
+                          onClick={() => handleUnfriendClick(friend)}
+                          disabled={loading}
+                        >
+                          <UserMinus size={16} className="me-1" />
+                          Unfriend
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline-danger"
-                        onClick={() => handleUnfriendClick(friend)}
-                        disabled={loading}
-                      >
-                        <UserMinus size={16} className="me-1" />
-                        Unfriend
-                      </Button>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
