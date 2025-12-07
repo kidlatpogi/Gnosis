@@ -13,6 +13,7 @@ import {
   getUserInfo,
   removeFriend
 } from '../lib/db';
+import UnfriendModal from '../components/UnfriendModal';
 
 function Friends() {
   const { user } = useAuth();
@@ -26,6 +27,8 @@ function Friends() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [newRequestCount, setNewRequestCount] = useState(0);
   const [listenerError, setListenerError] = useState(null);
+  const [showUnfriendModal, setShowUnfriendModal] = useState(false);
+  const [friendToUnfriend, setFriendToUnfriend] = useState(null);
 
   useEffect(() => {
     if (!user || !user.uid) {
@@ -198,16 +201,20 @@ function Friends() {
     }
   };
 
-  const handleUnfriend = async (friendId, friendName) => {
-    // Confirm before unfriending
-    if (!window.confirm(`Are you sure you want to unfriend ${friendName}?`)) {
-      return;
-    }
+  const handleUnfriendClick = (friend) => {
+    setFriendToUnfriend(friend);
+    setShowUnfriendModal(true);
+  };
+
+  const handleConfirmUnfriend = async () => {
+    if (!friendToUnfriend) return;
 
     setLoading(true);
     try {
-      await removeFriend(user.uid, friendId);
-      setMessage({ type: 'info', text: `${friendName} has been removed from your friends list.` });
+      await removeFriend(user.uid, friendToUnfriend.uid);
+      setMessage({ type: 'info', text: `${friendToUnfriend.displayName} has been removed from your friends list.` });
+      setShowUnfriendModal(false);
+      setFriendToUnfriend(null);
     } catch (error) {
       const errorMsg = error.message || 'Failed to remove friend. Please try again.';
       setMessage({ type: 'danger', text: errorMsg });
@@ -366,7 +373,7 @@ function Friends() {
                       <Button
                         size="sm"
                         variant="outline-danger"
-                        onClick={() => handleUnfriend(friend.uid, friend.displayName)}
+                        onClick={() => handleUnfriendClick(friend)}
                         disabled={loading}
                       >
                         <UserMinus size={16} className="me-1" />
@@ -380,6 +387,14 @@ function Friends() {
           </Card>
         </Col>
       </Row>
+
+      <UnfriendModal
+        show={showUnfriendModal}
+        onHide={() => setShowUnfriendModal(false)}
+        friend={friendToUnfriend}
+        onConfirm={handleConfirmUnfriend}
+        loading={loading}
+      />
     </Container>
   );
 }
