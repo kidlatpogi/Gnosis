@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, ListGroup, Badge, Alert } from 'react-bootstrap';
-import { UserPlus, Users, Check, X, Mail, Bell, Copy } from 'lucide-react';
+import { UserPlus, Users, Check, X, Mail, Bell, Copy, UserMinus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { 
-  sendFriendRequest, 
-  acceptFriendRequest, 
+import {
+  sendFriendRequest,
+  acceptFriendRequest,
   rejectFriendRequest,
   listenToFriendRequests,
   listenToFriends,
-  getUserInfo
+  getUserInfo,
+  removeFriend
 } from '../lib/db';
 
 function Friends() {
@@ -31,7 +32,7 @@ function Friends() {
       console.log('⏳ Waiting for user authentication...');
       return;
     }
-    
+
     // Fetch user's own code
     const fetchUserCode = async () => {
       try {
@@ -44,7 +45,7 @@ function Friends() {
         console.error('Error fetching user code:', error);
       }
     };
-    
+
     fetchUserCode();
 
     console.log('📡 Setting up listeners for user:', user.uid);
@@ -55,13 +56,13 @@ function Friends() {
       console.log('📨 Friend requests updated:', requests.length);
       const previousCount = friendRequests.length;
       setFriendRequests(requests);
-      
+
       // Show notification for new requests
       if (requests.length > previousCount && previousCount > 0) {
         setNewRequestCount(requests.length - previousCount);
-        setMessage({ 
-          type: 'info', 
-          text: `You have ${requests.length - previousCount} new friend request${requests.length - previousCount > 1 ? 's' : ''}!` 
+        setMessage({
+          type: 'info',
+          text: `You have ${requests.length - previousCount} new friend request${requests.length - previousCount > 1 ? 's' : ''}!`
         });
       }
     });
@@ -70,7 +71,7 @@ function Friends() {
     const unsubscribeFriends = listenToFriends(user.uid, (friendsList) => {
       console.log('👥 Friends list updated:', friendsList.length);
       setFriends(friendsList);
-      
+
       // Fetch details for each friend
       Promise.all(
         friendsList.map(async (friendId) => {
@@ -99,7 +100,7 @@ function Friends() {
       );
       setFriendRequestsWithDetails(details);
     };
-    
+
     if (friendRequests.length > 0) {
       fetchRequestDetails();
     } else {
@@ -197,6 +198,25 @@ function Friends() {
     }
   };
 
+  const handleUnfriend = async (friendId, friendName) => {
+    // Confirm before unfriending
+    if (!window.confirm(`Are you sure you want to unfriend ${friendName}?`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await removeFriend(user.uid, friendId);
+      setMessage({ type: 'info', text: `${friendName} has been removed from your friends list.` });
+    } catch (error) {
+      const errorMsg = error.message || 'Failed to remove friend. Please try again.';
+      setMessage({ type: 'danger', text: errorMsg });
+      console.error('Error removing friend:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Container className="py-5">
       <Row className="mb-4">
@@ -265,9 +285,9 @@ function Friends() {
                     maxLength="6"
                   />
                 </Form.Group>
-                <Button 
-                  type="submit" 
-                  variant="primary" 
+                <Button
+                  type="submit"
+                  variant="primary"
                   disabled={loading || !friendCode.trim()}
                 >
                   <UserPlus size={18} className="me-2" />
@@ -343,7 +363,15 @@ function Friends() {
                         <strong>{friend.displayName}</strong>
                         <div className="small text-muted">{friend.email}</div>
                       </div>
-                      <Badge bg="success">Friend</Badge>
+                      <Button
+                        size="sm"
+                        variant="outline-danger"
+                        onClick={() => handleUnfriend(friend.uid, friend.displayName)}
+                        disabled={loading}
+                      >
+                        <UserMinus size={16} className="me-1" />
+                        Unfriend
+                      </Button>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
