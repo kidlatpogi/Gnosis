@@ -3,7 +3,7 @@ import { Plus, Database } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getAllDecks, getUserProgress, seedDatabase } from '../lib/db';
+import { getAllDecks, getUserProgress, seedDatabase, getStudySessionState } from '../lib/db';
 import { isCardDue } from '../utils/sm2_algorithm';
 import AddDeckModal from '../components/AddDeckModal';
 import DeckList from '../components/DeckList';
@@ -19,6 +19,7 @@ const Dashboard = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDeck, setEditingDeck] = useState(null);
   const [editCardsOnly, setEditCardsOnly] = useState(false);
+  const [savedSessions, setSavedSessions] = useState({}); // Track saved sessions per deck
 
   useEffect(() => {
     loadDecks();
@@ -69,6 +70,20 @@ const Dashboard = () => {
           }
         }
         setDeckStats(stats);
+
+        // Load saved sessions for each deck
+        const sessions = {};
+        for (const deck of userDecks) {
+          try {
+            const session = await getStudySessionState(user.uid, deck.id);
+            if (session) {
+              sessions[deck.id] = session;
+            }
+          } catch (err) {
+            console.error(`Error loading session for deck ${deck.id}:`, err);
+          }
+        }
+        setSavedSessions(sessions);
       }
     } catch (error) {
       console.error('Error loading decks:', error);
@@ -160,6 +175,7 @@ const Dashboard = () => {
         <DeckList
           decks={decks}
           deckStats={deckStats}
+          savedSessions={savedSessions}
           onStudy={handleStudy}
           onEdit={handleEditDeck}
           onEditCards={handleEditCards}

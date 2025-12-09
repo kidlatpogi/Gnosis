@@ -6,6 +6,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import StudyCard from '../components/StudyCard';
 import { calculateNextReview, adjustQualityForHint, isCardDue } from '../utils/sm2_algorithm';
+import { saveStudySessionState, getStudySessionState, clearStudySessionState } from '../lib/db';
 import { ArrowLeft } from 'lucide-react';
 
 const Study = () => {
@@ -21,6 +22,9 @@ const Study = () => {
   const [cardsToRetry, setCardsToRetry] = useState([]);
   const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [savedSession, setSavedSession] = useState(null);
+  const [cardOrder, setCardOrder] = useState([]); // Track original card order for session persistence
 
   // Active time tracking with idle detection
   const [activeTimeMs, setActiveTimeMs] = useState(0);
@@ -95,19 +99,40 @@ const Study = () => {
 
         const userProgress = progressSnap.exists() ? progressSnap.data() : { cards: {} };
 
-        // Filter cards that are due for review
-        const cardsToReview = deckData.cards.filter(card => {
-          const cardProgress = userProgress.cards?.[card.id];
-          if (!cardProgress) return true; // New card
-          return isCardDue(cardProgress.nextReviewDate);
-        });
+        // Check for saved session state FIRST
+        const sessionState = await getStudySessionState(user.uid, deckId);
+        
+        let finalCards;
+        let orderedCards;
+        
+        if (sessionState && sessionState.cardOrder && sessionState.cardOrder.length > 0) {
+          // Resume previous session - use the exact cards from the session
+          finalCards = deckData.cards.filter(card => sessionState.cardOrder.includes(card.id));
+          orderedCards = sessionState.cardOrder
+            .map(cardId => finalCards.find(card => card.id === cardId))
+            .filter(Boolean);
+          setDueCards(orderedCards);
+          setCardOrder(orderedCards.map(card => card.id)); // Store the order
+          setSavedSession(sessionState);
+          setShowResumePrompt(true);
+        } else {
+          // New session - filter cards that are due for review
+          const cardsToReview = deckData.cards.filter(card => {
+            const cardProgress = userProgress.cards?.[card.id];
+            if (!cardProgress) return true; // New card
+            return isCardDue(cardProgress.nextReviewDate);
+          });
 
-        // If no cards are due but deck has cards, load all cards for review
-        const finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
+          // If no cards are due but deck has cards, load all cards for review
+          finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
 
-        // Shuffle cards for randomization
-        const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
-        setDueCards(shuffledCards);
+          // Shuffle cards for randomization (new session)
+          const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
+          setDueCards(shuffledCards);
+          setCardOrder(shuffledCards.map(card => card.id)); // Store the order
+          setCurrentCardIndex(0);
+          setCurrentRound(1);
+        }
 
         // Initialize active time tracking if there are cards
         if (finalCards.length > 0) {
@@ -200,14 +225,44 @@ const Study = () => {
         previousCardData
       );
 
+      // Validate and ensure all dates are valid ISO strings
+      let validNextReview;
+      let validLastReviewed;
+
+      try {
+        // Validate nextReview
+        const testNextReview = new Date(nextReview);
+        if (isNaN(testNextReview.getTime())) {
+          validNextReview = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        } else {
+          validNextReview = testNextReview.toISOString();
+        }
+      } catch (err) {
+        console.error('Error validating nextReview:', err);
+        validNextReview = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      try {
+        // Validate lastReviewed
+        const now = new Date();
+        if (isNaN(now.getTime())) {
+          validLastReviewed = new Date(Date.now()).toISOString();
+        } else {
+          validLastReviewed = now.toISOString();
+        }
+      } catch (err) {
+        console.error('Error creating lastReviewed:', err);
+        validLastReviewed = new Date(Date.now()).toISOString();
+      }
+
       // Prepare card progress data - only include defined values
       const cardProgressData = {
         cardId: currentCard.id,
         learningState,
         interval,
         easeFactor,
-        nextReviewDate: nextReview,
-        lastReviewed: new Date().toISOString(),
+        nextReviewDate: validNextReview,
+        lastReviewed: validLastReviewed,
         reviewCount: (previousCardData.reviewCount || 0) + 1
       };
 
@@ -232,7 +287,16 @@ const Study = () => {
       }
 
       // Move to next card
-      setCurrentCardIndex(prev => prev + 1);
+      setCurrentCardIndex(prev => {
+        const nextIndex = prev + 1;
+        // Save session state for resuming later
+        if (user && cardOrder && cardOrder.length > 0) {
+          saveStudySessionState(user.uid, deckId, nextIndex, currentRound, cardOrder).catch(err => 
+            console.error('Error saving session state:', err)
+          );
+        }
+        return nextIndex;
+      });
     } catch (err) {
       console.error('Error saving progress:', err);
       setError('Failed to save progress');
@@ -268,12 +332,18 @@ const Study = () => {
     }
   };
 
-  const handleStartNextRound = () => {
+  const handleStartNextRound = async () => {
     if (cardsToRetry.length > 0) {
+      // Clear saved session state before starting new round
+      if (user) {
+        await clearStudySessionState(user.uid, deckId);
+      }
+
       // Start a new round with cards that were marked 'Again'
       // Shuffle cards for randomization
       const shuffledRetry = [...cardsToRetry].sort(() => Math.random() - 0.5);
       setDueCards(shuffledRetry);
+      setCardOrder(shuffledRetry.map(card => card.id)); // Update card order for new round
       setCardsToRetry([]);
       setCurrentCardIndex(0);
       setCurrentRound(currentRound + 1);
@@ -300,11 +370,37 @@ const Study = () => {
     navigate('/dashboard');
   };
 
+  const handleResumeSession = () => {
+    if (!savedSession) return;
+    
+    // Restore the saved session state
+    setCurrentCardIndex(savedSession.currentCardIndex);
+    setCurrentRound(savedSession.currentRound);
+    setShowResumePrompt(false);
+  };
+
+  const handleStartFresh = async () => {
+    if (user && dueCards) {
+      // Clear the saved session state
+      await clearStudySessionState(user.uid, deckId);
+    }
+    
+    setShowResumePrompt(false);
+    setCurrentCardIndex(0);
+    setCurrentRound(1);
+    setSavedSession(null);
+  };
+
   const handleReviewAgain = async () => {
     setCurrentCardIndex(0);
     setLoading(true);
 
     try {
+      // Clear saved session state before starting new review
+      if (user) {
+        await clearStudySessionState(user.uid, deckId);
+      }
+
       // Reload deck and load ALL cards (not just due cards)
       const deckRef = doc(db, 'decks', deckId);
       const deckSnap = await getDoc(deckRef);
@@ -318,6 +414,7 @@ const Study = () => {
           // Shuffle cards for randomization
           const shuffledCards = [...deckData.cards].sort(() => Math.random() - 0.5);
           setDueCards(shuffledCards);
+          setCardOrder(shuffledCards.map(card => card.id)); // Update card order for review again
           // Restart timer for new session
           const now = Date.now();
           setLastActivityTime(now);
@@ -387,10 +484,40 @@ const Study = () => {
           </div>
         </div>
 
+        {/* Resume Session Prompt */}
+        {showResumePrompt && savedSession && (
+          <div className="d-flex justify-content-center mb-4">
+            <div className="card glass-card shadow-lg p-4 rounded-3" style={{ maxWidth: '500px', borderLeft: '4px solid #0d6efd' }}>
+              <h5 className="mb-3 d-flex align-items-center gap-2">
+                <span>📍</span> Continue Previous Session?
+              </h5>
+              <p className="text-muted mb-3">
+                You were studying this deck. Continue from <strong>card {savedSession.currentCardIndex + 1}</strong> of <strong>{dueCards.length}</strong>?
+              </p>
+              <div className="d-flex gap-2 justify-content-end">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleStartFresh}
+                >
+                  Start Fresh
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleResumeSession}
+                >
+                  Resume
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Study Card */}
         <div className="d-flex justify-content-center">
           <div style={{ width: '100%', maxWidth: '100%' }}>
-            {currentCardIndex < dueCards.length && (
+            {currentCardIndex < dueCards.length && !showResumePrompt && (
               <StudyCard
                 key={dueCards[currentCardIndex]?.id}
                 card={dueCards[currentCardIndex]}
