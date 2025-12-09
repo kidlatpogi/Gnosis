@@ -823,6 +823,65 @@ export function listenToSharedDecks(userId, callback) {
   }
 }
 
+// ==================== STUDY SESSION PERSISTENCE ====================
+
+/**
+ * Save current study session state (position, progress)
+ * @param {string} userId - User ID
+ * @param {string} deckId - Deck ID
+ * @param {number} currentCardIndex - Current card position
+ * @param {number} currentRound - Current round number
+ * @param {Array} dueCards - Array of cards being studied
+ * @returns {Promise<void>}
+ */
+export async function saveStudySessionState(userId, deckId, currentCardIndex, currentRound, dueCards) {
+  try {
+    const sessionStateRef = doc(db, 'study_session_states', `${userId}_${deckId}`);
+    await setDoc(sessionStateRef, {
+      userId,
+      deckId,
+      currentCardIndex,
+      currentRound,
+      cardOrder: dueCards.map(card => card.id), // Store the card order
+      lastUpdated: new Date().toISOString()
+    }, { merge: true });
+  } catch (error) {
+    console.error('❌ Error saving study session state:', error);
+  }
+}
+
+/**
+ * Get saved study session state for a deck
+ * @param {string} userId - User ID
+ * @param {string} deckId - Deck ID
+ * @returns {Promise<Object|null>} - Session state or null if not found
+ */
+export async function getStudySessionState(userId, deckId) {
+  try {
+    const sessionStateRef = doc(db, 'study_session_states', `${userId}_${deckId}`);
+    const sessionSnap = await getDoc(sessionStateRef);
+    return sessionSnap.exists() ? sessionSnap.data() : null;
+  } catch (error) {
+    console.error('❌ Error getting study session state:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear study session state (called when user completes a round)
+ * @param {string} userId - User ID
+ * @param {string} deckId - Deck ID
+ * @returns {Promise<void>}
+ */
+export async function clearStudySessionState(userId, deckId) {
+  try {
+    const sessionStateRef = doc(db, 'study_session_states', `${userId}_${deckId}`);
+    await deleteDoc(sessionStateRef);
+  } catch (error) {
+    console.error('❌ Error clearing study session state:', error);
+  }
+}
+
 // ==================== LEADERBOARD ====================
 
 /**

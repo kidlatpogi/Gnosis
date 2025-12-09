@@ -6,6 +6,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import StudyCard from '../components/StudyCard';
 import { calculateNextReview, adjustQualityForHint, isCardDue } from '../utils/sm2_algorithm';
+import { saveStudySessionState, getStudySessionState, clearStudySessionState } from '../lib/db';
 import { ArrowLeft } from 'lucide-react';
 
 const Study = () => {
@@ -21,6 +22,8 @@ const Study = () => {
   const [cardsToRetry, setCardsToRetry] = useState([]);
   const [roundStats, setRoundStats] = useState({ correct: 0, incorrect: 0 });
   const [error, setError] = useState(null);
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [savedSession, setSavedSession] = useState(null);
 
   // Active time tracking with idle detection
   const [activeTimeMs, setActiveTimeMs] = useState(0);
@@ -108,6 +111,17 @@ const Study = () => {
         // Shuffle cards for randomization
         const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
         setDueCards(shuffledCards);
+
+        // Check for saved session state
+        const sessionState = await getStudySessionState(user.uid, deckId);
+        if (sessionState && sessionState.currentCardIndex > 0 && sessionState.currentCardIndex < shuffledCards.length) {
+          // Show a prompt to resume or start fresh
+          setSavedSession(sessionState);
+          setShowResumePrompt(true);
+        } else {
+          setCurrentCardIndex(0);
+          setCurrentRound(1);
+        }
 
         // Initialize active time tracking if there are cards
         if (finalCards.length > 0) {
@@ -262,7 +276,16 @@ const Study = () => {
       }
 
       // Move to next card
-      setCurrentCardIndex(prev => prev + 1);
+      setCurrentCardIndex(prev => {
+        const nextIndex = prev + 1;
+        // Save session state for resuming later
+        if (user && dueCards) {
+          saveStudySessionState(user.uid, deckId, nextIndex, currentRound, dueCards).catch(err => 
+            console.error('Error saving session state:', err)
+          );
+        }
+        return nextIndex;
+      });
     } catch (err) {
       console.error('Error saving progress:', err);
       setError('Failed to save progress');
@@ -298,8 +321,13 @@ const Study = () => {
     }
   };
 
-  const handleStartNextRound = () => {
+  const handleStartNextRound = async () => {
     if (cardsToRetry.length > 0) {
+      // Clear saved session state before starting new round
+      if (user) {
+        await clearStudySessionState(user.uid, deckId);
+      }
+
       // Start a new round with cards that were marked 'Again'
       // Shuffle cards for randomization
       const shuffledRetry = [...cardsToRetry].sort(() => Math.random() - 0.5);
@@ -330,11 +358,46 @@ const Study = () => {
     navigate('/dashboard');
   };
 
+  const handleResumeSession = async () => {
+    if (!savedSession) return;
+    
+    // Restore the saved session state
+    setCurrentCardIndex(savedSession.currentCardIndex);
+    setCurrentRound(savedSession.currentRound);
+    
+    // Reorder cards based on saved order
+    if (savedSession.cardOrder && savedSession.cardOrder.length > 0) {
+      const reorderedCards = savedSession.cardOrder.map(cardId => 
+        dueCards.find(card => card.id === cardId)
+      ).filter(Boolean);
+      setDueCards(reorderedCards);
+    }
+    
+    setShowResumePrompt(false);
+  };
+
+  const handleStartFresh = async () => {
+    if (user && dueCards) {
+      // Clear the saved session state
+      await clearStudySessionState(user.uid, deckId);
+    }
+    
+    setShowResumePrompt(false);
+    setCurrentCardIndex(0);
+    setCurrentRound(1);
+    setSavedSession(null);
+  };
+
   const handleReviewAgain = async () => {
     setCurrentCardIndex(0);
     setLoading(true);
 
     try {
+      // Clear saved session state before starting new review
+      if (user) {
+        await clearStudySessionState(user.uid, deckId);
+      }
+
       // Reload deck and load ALL cards (not just due cards)
       const deckRef = doc(db, 'decks', deckId);
       const deckSnap = await getDoc(deckRef);
@@ -417,10 +480,40 @@ const Study = () => {
           </div>
         </div>
 
+        {/* Resume Session Prompt */}
+        {showResumePrompt && savedSession && (
+          <div className="d-flex justify-content-center mb-4">
+            <div className="card glass-card shadow-lg p-4 rounded-3" style={{ maxWidth: '500px', borderLeft: '4px solid #0d6efd' }}>
+              <h5 className="mb-3 d-flex align-items-center gap-2">
+                <span>📍</span> Continue Previous Session?
+              </h5>
+              <p className="text-muted mb-3">
+                You were studying this deck. Continue from <strong>card {savedSession.currentCardIndex + 1}</strong> of <strong>{dueCards.length}</strong>?
+              </p>
+              <div className="d-flex gap-2 justify-content-end">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={handleStartFresh}
+                >
+                  Start Fresh
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleResumeSession}
+                >
+                  Resume
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Study Card */}
         <div className="d-flex justify-content-center">
           <div style={{ width: '100%', maxWidth: '100%' }}>
-            {currentCardIndex < dueCards.length && (
+            {currentCardIndex < dueCards.length && !showResumePrompt && (
               <StudyCard
                 key={dueCards[currentCardIndex]?.id}
                 card={dueCards[currentCardIndex]}
