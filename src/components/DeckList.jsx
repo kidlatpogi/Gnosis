@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { deleteDeck } from '../lib/db';
 import { useNavigate } from 'react-router-dom';
 
-const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) => {
+const DeckList = ({ decks, deckStats, savedSessions = {}, onStudy, onEdit, onEditCards, onDelete }) => {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deckToDelete, setDeckToDelete] = useState(null);
@@ -103,9 +103,9 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) 
 
                   {/* Action Buttons */}
                   <div className="mt-auto">
-                    {/* Primary Review Button */}
+                    {/* Primary Review/Continue Button */}
                     <Button
-                      variant={stats.due > 0 ? "primary" : "outline-primary"}
+                      variant={savedSessions[deck.id] ? "warning" : (stats.due > 0 ? "primary" : "outline-primary")}
                       onClick={() => {
                         if (onStudy) {
                           onStudy(deck.id);
@@ -116,7 +116,16 @@ const DeckList = ({ decks, deckStats, onStudy, onEdit, onEditCards, onDelete }) 
                       size="sm"
                     >
                       <BookOpen size={16} className="me-1" />
-                      {stats.due > 0 ? `Review` : 'Review'}
+                      {savedSessions[deck.id] ? (
+                        <>
+                          Continue
+                          <span className="ms-1 badge bg-danger">
+                            {savedSessions[deck.id].currentCardIndex + 1}/{savedSessions[deck.id].cardOrder?.length || stats.due || stats.total}
+                          </span>
+                        </>
+                      ) : (
+                        'Review'
+                      )}
                     </Button>
 
                     {/* Secondary Action Buttons */}

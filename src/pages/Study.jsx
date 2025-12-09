@@ -24,6 +24,7 @@ const Study = () => {
   const [error, setError] = useState(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedSession, setSavedSession] = useState(null);
+  const [cardOrder, setCardOrder] = useState([]); // Track original card order for session persistence
 
   // Active time tracking with idle detection
   const [activeTimeMs, setActiveTimeMs] = useState(0);
@@ -98,27 +99,37 @@ const Study = () => {
 
         const userProgress = progressSnap.exists() ? progressSnap.data() : { cards: {} };
 
-        // Filter cards that are due for review
-        const cardsToReview = deckData.cards.filter(card => {
-          const cardProgress = userProgress.cards?.[card.id];
-          if (!cardProgress) return true; // New card
-          return isCardDue(cardProgress.nextReviewDate);
-        });
-
-        // If no cards are due but deck has cards, load all cards for review
-        const finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
-
-        // Shuffle cards for randomization
-        const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
-        setDueCards(shuffledCards);
-
-        // Check for saved session state
+        // Check for saved session state FIRST
         const sessionState = await getStudySessionState(user.uid, deckId);
-        if (sessionState && sessionState.currentCardIndex > 0 && sessionState.currentCardIndex < shuffledCards.length) {
-          // Show a prompt to resume or start fresh
+        
+        let finalCards;
+        let orderedCards;
+        
+        if (sessionState && sessionState.cardOrder && sessionState.cardOrder.length > 0) {
+          // Resume previous session - use the exact cards from the session
+          finalCards = deckData.cards.filter(card => sessionState.cardOrder.includes(card.id));
+          orderedCards = sessionState.cardOrder
+            .map(cardId => finalCards.find(card => card.id === cardId))
+            .filter(Boolean);
+          setDueCards(orderedCards);
+          setCardOrder(orderedCards.map(card => card.id)); // Store the order
           setSavedSession(sessionState);
           setShowResumePrompt(true);
         } else {
+          // New session - filter cards that are due for review
+          const cardsToReview = deckData.cards.filter(card => {
+            const cardProgress = userProgress.cards?.[card.id];
+            if (!cardProgress) return true; // New card
+            return isCardDue(cardProgress.nextReviewDate);
+          });
+
+          // If no cards are due but deck has cards, load all cards for review
+          finalCards = cardsToReview.length > 0 ? cardsToReview : deckData.cards;
+
+          // Shuffle cards for randomization (new session)
+          const shuffledCards = [...finalCards].sort(() => Math.random() - 0.5);
+          setDueCards(shuffledCards);
+          setCardOrder(shuffledCards.map(card => card.id)); // Store the order
           setCurrentCardIndex(0);
           setCurrentRound(1);
         }
@@ -279,8 +290,8 @@ const Study = () => {
       setCurrentCardIndex(prev => {
         const nextIndex = prev + 1;
         // Save session state for resuming later
-        if (user && dueCards) {
-          saveStudySessionState(user.uid, deckId, nextIndex, currentRound, dueCards).catch(err => 
+        if (user && cardOrder && cardOrder.length > 0) {
+          saveStudySessionState(user.uid, deckId, nextIndex, currentRound, cardOrder).catch(err => 
             console.error('Error saving session state:', err)
           );
         }
@@ -332,6 +343,7 @@ const Study = () => {
       // Shuffle cards for randomization
       const shuffledRetry = [...cardsToRetry].sort(() => Math.random() - 0.5);
       setDueCards(shuffledRetry);
+      setCardOrder(shuffledRetry.map(card => card.id)); // Update card order for new round
       setCardsToRetry([]);
       setCurrentCardIndex(0);
       setCurrentRound(currentRound + 1);
@@ -358,21 +370,12 @@ const Study = () => {
     navigate('/dashboard');
   };
 
-  const handleResumeSession = async () => {
+  const handleResumeSession = () => {
     if (!savedSession) return;
     
     // Restore the saved session state
     setCurrentCardIndex(savedSession.currentCardIndex);
     setCurrentRound(savedSession.currentRound);
-    
-    // Reorder cards based on saved order
-    if (savedSession.cardOrder && savedSession.cardOrder.length > 0) {
-      const reorderedCards = savedSession.cardOrder.map(cardId => 
-        dueCards.find(card => card.id === cardId)
-      ).filter(Boolean);
-      setDueCards(reorderedCards);
-    }
-    
     setShowResumePrompt(false);
   };
 
@@ -411,6 +414,7 @@ const Study = () => {
           // Shuffle cards for randomization
           const shuffledCards = [...deckData.cards].sort(() => Math.random() - 0.5);
           setDueCards(shuffledCards);
+          setCardOrder(shuffledCards.map(card => card.id)); // Update card order for review again
           // Restart timer for new session
           const now = Date.now();
           setLastActivityTime(now);

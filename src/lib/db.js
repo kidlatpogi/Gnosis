@@ -831,10 +831,10 @@ export function listenToSharedDecks(userId, callback) {
  * @param {string} deckId - Deck ID
  * @param {number} currentCardIndex - Current card position
  * @param {number} currentRound - Current round number
- * @param {Array} dueCards - Array of cards being studied
+ * @param {Array} cardOrder - Array of card IDs in order
  * @returns {Promise<void>}
  */
-export async function saveStudySessionState(userId, deckId, currentCardIndex, currentRound, dueCards) {
+export async function saveStudySessionState(userId, deckId, currentCardIndex, currentRound, cardOrder) {
   try {
     const sessionStateRef = doc(db, 'study_session_states', `${userId}_${deckId}`);
     await setDoc(sessionStateRef, {
@@ -842,10 +842,19 @@ export async function saveStudySessionState(userId, deckId, currentCardIndex, cu
       deckId,
       currentCardIndex,
       currentRound,
-      cardOrder: dueCards.map(card => card.id), // Store the card order
+      cardOrder: Array.isArray(cardOrder) ? cardOrder : cardOrder.map(card => card.id), // Support both array of IDs and array of card objects
       lastUpdated: new Date().toISOString()
     }, { merge: true });
   } catch (error) {
+    // Handle permission errors gracefully
+    if (error.code === 'permission-denied') {
+      console.warn('⚠️ Cannot save session - Firestore rules need update. See FIRESTORE_RULES_UPDATE.md');
+      return;
+    }
+    // Ignore network errors from browser extensions (ERR_BLOCKED_BY_CLIENT)
+    if (error.message?.includes('ERR_BLOCKED_BY_CLIENT') || error.code === 'failed-precondition') {
+      return;
+    }
     console.error('❌ Error saving study session state:', error);
   }
 }
@@ -862,6 +871,15 @@ export async function getStudySessionState(userId, deckId) {
     const sessionSnap = await getDoc(sessionStateRef);
     return sessionSnap.exists() ? sessionSnap.data() : null;
   } catch (error) {
+    // Handle permission errors gracefully (user needs to update Firestore rules)
+    if (error.code === 'permission-denied') {
+      console.warn('⚠️ Session persistence requires Firestore rules update. See FIRESTORE_RULES_UPDATE.md');
+      return null;
+    }
+    // Ignore network errors from browser extensions
+    if (error.message?.includes('ERR_BLOCKED_BY_CLIENT') || error.code === 'failed-precondition') {
+      return null;
+    }
     console.error('❌ Error getting study session state:', error);
     return null;
   }
@@ -878,6 +896,15 @@ export async function clearStudySessionState(userId, deckId) {
     const sessionStateRef = doc(db, 'study_session_states', `${userId}_${deckId}`);
     await deleteDoc(sessionStateRef);
   } catch (error) {
+    // Handle permission errors gracefully
+    if (error.code === 'permission-denied') {
+      console.warn('⚠️ Cannot clear session - Firestore rules need update. See FIRESTORE_RULES_UPDATE.md');
+      return;
+    }
+    // Ignore network errors from browser extensions
+    if (error.message?.includes('ERR_BLOCKED_BY_CLIENT') || error.code === 'failed-precondition') {
+      return;
+    }
     console.error('❌ Error clearing study session state:', error);
   }
 }
