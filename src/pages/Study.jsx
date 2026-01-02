@@ -357,6 +357,11 @@ const Study = () => {
   };
 
   const handleBackToDashboard = async () => {
+    // Clear saved session state when returning to dashboard
+    if (user) {
+      await clearStudySessionState(user.uid, deckId);
+    }
+
     // Calculate and save active study duration
     let finalActiveTime = activeTimeMs;
     if (isActive) {
